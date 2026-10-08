@@ -245,6 +245,7 @@ class SfxBank {
     v('crash');
     v('stamp');
     v('tick');
+    v('chatter');
   }
 
   play(id: SfxId, n = 0): void {
@@ -294,6 +295,14 @@ class SfxBank {
       case 'crash':
         this.thud.triggerAttackRelease('E1', '8n', t, 1);
         this.noise.triggerAttackRelease(0.3, t, 1);
+        break;
+      case 'chatter':
+        // Cat chatter at birds: a fast run of tiny clicks.
+        for (let k = 0; k < 7; k++) {
+          this.blip.frequency.setValueAtTime(1500 + (k % 2) * 300, t + k * 0.055);
+          this.blip.triggerAttackRelease(1500, 0.025, t + k * 0.055, 0.35);
+        }
+        this.lastT = t + 0.4;
         break;
       case 'stamp':
         this.thud.triggerAttackRelease('C2', '32n', t, 0.7);

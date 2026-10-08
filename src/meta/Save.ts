@@ -45,7 +45,7 @@ export interface Profile {
   secretBought: string[];
   settings: { music: boolean; sfx: boolean; haptics: boolean };
   /** First-session onboarding flags (GAME_DESIGN 8.1). */
-  flags: { introSeen: boolean; tutorialDone: boolean; firstRunDone: boolean; tomIntroDone: boolean; freeHatClaimed: boolean };
+  flags: { introSeen: boolean; tutorialDone: boolean; firstRunDone: boolean; tomIntroDone: boolean; freeHatClaimed: boolean; homeTourDone: boolean };
   sessions: number;
   /** First launch time (Starter Pack window). */
   firstSeen: number;
@@ -92,7 +92,7 @@ export function defaultProfile(): Profile {
     pass: { stamps: 0, claimed: [] },
     secretBought: [],
     settings: { music: true, sfx: true, haptics: true },
-    flags: { introSeen: false, tutorialDone: false, firstRunDone: false, tomIntroDone: false, freeHatClaimed: false },
+    flags: { introSeen: false, tutorialDone: false, firstRunDone: false, tomIntroDone: false, freeHatClaimed: false, homeTourDone: false },
     sessions: 0,
     firstSeen: Date.now(),
     ads: { day: -1, counts: {}, secretRefreshAt: 0, secretShift: 0, lastInterstitialAt: 0, runsSinceInterstitial: 0 },

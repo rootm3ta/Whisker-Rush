@@ -116,3 +116,10 @@ One line per judgment call.
 - S1: Unlock listeners use the capture phase (the comic stops propagation) and stay bound after unlock as a cheap "resume if iOS suspended us" hook, instead of being removed.
 - S1: Context suspends and the silent loop pauses when the page is hidden, so nothing plays in the background or shows on the lock screen.
 - S1: Home music is a lo-fi version of the city theme: homeBpm (Maple 92, Rome lowered to 90), 16th swing, warm lowpass, soft kick and rim, vinyl crackle; crossfades into the run theme over 1.6 s.
+- S2: Hotspot labels are real buttons (56 pt hit area via an invisible pad) laid out every frame by a small allocation-free solver (`ui/labelLayout.ts`) that tries nearby offsets, avoids the top bar, logo, Best ribbon, RUN paw and the window, and keeps its last choice to avoid flicker.
+- S2: Halos are additive glow sprites placed just behind each object, so the object hides the centre and the glow reads as a rim; this avoids an outline post pass.
+- S2: Miso on the couch is now the Missions hotspot (the notebook still works); poking her for reactions is replaced by that.
+- S2: The living window is a real hole in the back wall with a low-poly street behind it, so it gets free parallax from the camera drift. Static props are one merged vertex-coloured mesh; about 9 draw calls visible at once.
+- S2: Time of day: morning from 5, golden hour from 12, dusk from 18, night from 21 (local clock; `?tod=night` to test). Room sun, ambient and a lamp light follow it.
+- S2: The tour spotlights the RUN paw for the Run step, because the door is hidden behind the fridge from the Home camera.
+- S2: Debug menu (`?debug`, corner DBG button) with ambient events, time of day and tour replay; later cities add their own sections.

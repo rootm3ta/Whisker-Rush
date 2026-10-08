@@ -13,7 +13,7 @@ const DT = 1 / 60;
 
 function veteran() {
   const p = defaultProfile();
-  p.flags = { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true, freeHatClaimed: true };
+  p.flags = { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true, freeHatClaimed: true, homeTourDone: true };
   return p;
 }
 

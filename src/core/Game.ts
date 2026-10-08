@@ -36,7 +36,9 @@ import { MissionsScreen } from '../ui/screens/MissionsScreen';
 import { CalendarScreen } from '../ui/screens/CalendarScreen';
 import { PassScreen } from '../ui/screens/PassScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
-import type { HomeAction } from '../data/home';
+import { HomeTour } from '../ui/HomeTour';
+import { DebugMenu } from '../ui/DebugMenu';
+import { HOME, WINDOW, timeOfDay, type HomeAction, type TimeOfDay, type WindowEvent } from '../data/home';
 import { PASS } from '../data/economy';
 import { computeRunConfig } from '../meta/Loadout';
 import { applyStats, missionText, type RunStats } from '../meta/Missions';
@@ -121,6 +123,11 @@ export class Game {
   private readonly metaRng = new Rng((Date.now() ^ 0x5bd1e995) >>> 0);
   private readonly labelPos = new THREE.Vector3();
   private pokes = 0;
+  private readonly tour: HomeTour;
+  private readonly debug: DebugMenu;
+  private homeTime = 0;
+  /** RUN paw rect for the tour spotlight (measured once per tour). */
+  private pawRect: DOMRect | null = null;
   private readonly comic: Comic;
   private readonly tutorial: Tutorial;
   private readonly tutorialHud: TutorialHud;
@@ -209,7 +216,17 @@ export class Game {
       settings: () => this.screens.settings.open(),
       shop: () => this.shop.open(),
       pass: () => this.screens.pass.open(),
+      open: (a) => this.openHomeAction(a),
     });
+    this.tour = new HomeTour(host);
+    this.home.windowView.onCue = (c) => {
+      this.home.cue(c);
+      this.audio.play(c);
+    };
+    this.debug = new DebugMenu(host);
+    for (const ev of Object.keys(WINDOW.events) as WindowEvent[]) this.debug.add('Ambient events', ev, () => this.home.windowView.play(ev));
+    for (const tod of Object.keys(WINDOW.times) as TimeOfDay[]) this.debug.add('Time of day', tod, () => this.home.setTime(tod));
+    this.debug.add('Home', 'Replay tour', () => this.replayTour());
     const ctx: MetaCtx = {
       save: this.save,
       rng: this.metaRng,
@@ -245,6 +262,7 @@ export class Game {
         },
         () => this.playIntro(true),
         this.audio,
+        () => this.replayTour(),
       ),
     };
     this.comic = new Comic(host);
@@ -304,12 +322,16 @@ export class Game {
             this.refreshMeta();
             const hat = freeHatPending(this.save.profile);
             this.homeHud.setHighlight(hat ? 'wardrobe' : null, hat ? 'Free hat!' : '');
+            this.homeTime = 0;
+            this.home.setTime(this.localTimeOfDay());
             void this.startMonetization();
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
           exit: () => {
             this.homeHud.visible = false;
             this.home.previewOn = false;
+            this.home.settleMiso();
+            this.tour.finish();
           },
         },
         run: {
@@ -824,7 +846,25 @@ export class Game {
     this.openHomeAction(hit as HomeAction | 'miso', e.clientX, e.clientY);
   };
 
+  /** Local clock, or ?tod=night etc. for testing. */
+  private localTimeOfDay(): TimeOfDay {
+    const q = new URLSearchParams(location.search).get('tod') as TimeOfDay | null;
+    return q && q in WINDOW.times ? q : timeOfDay(new Date().getHours());
+  }
+
+  private replayTour(): void {
+    this.save.profile.flags.homeTourDone = false;
+    this.save.write();
+    this.homeTime = 0;
+  }
+
   private openHomeAction(a: HomeAction | 'miso', x = 0, y = 0): void {
+    if (this.tour.active) return;
+    if (a !== 'miso') {
+      this.home.press(a);
+      this.haptics.tick();
+      this.audio.play('pop');
+    }
     switch (a) {
       case 'run':
         this.startRun();
@@ -916,11 +956,41 @@ export class Game {
     this.market.update();
     const w = this.host.clientWidth;
     const hh = this.host.clientHeight;
-    const sheet = this.anySheetOpen();
+    // The tour counts as an overlay but should not hide the room UI it points at.
+    const sheet = overlays.open - (this.tour.active ? 1 : 0) > 0;
     this.homeHud.setCovered(sheet);
     for (const a of h.anchors) {
       const v = this.labelPos.copy(a.pos).project(h.camera);
-      this.homeHud.placeLabel(a.action, ((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, !sheet && v.z < 1);
+      this.homeHud.placeLabel(a.action, ((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, !sheet && !h.previewOn && v.z < 1);
+    }
+    const W = WINDOW.hole;
+    const p0 = this.labelPos.set(W.x - W.w / 2, W.y + W.h / 2, -2.9).project(h.camera);
+    const x0 = ((p0.x + 1) / 2) * w;
+    const y0 = ((1 - p0.y) / 2) * hh;
+    const p1 = this.labelPos.set(W.x + W.w / 2, W.y - W.h / 2, -2.9).project(h.camera);
+    this.homeHud.setWindowRect(x0, y0, ((p1.x + 1) / 2) * w - x0, ((1 - p1.y) / 2) * hh - y0);
+    this.homeHud.flushLabels(w, hh);
+    for (const a of HOME.hotspotOrder) h.setAttention(a, this.homeHud.hasNews(a));
+    this.homeTime += frameDt;
+    if (!this.save.profile.flags.homeTourDone && !this.tour.active && !sheet && this.homeTime > 1.2 && this.fsm.is('home')) {
+      this.pawRect = null;
+      this.tour.start(() => {
+        this.save.profile.flags.homeTourDone = true;
+        this.save.write();
+      });
+    }
+    const ta = this.tour.action;
+    if (ta === 'run') {
+      // The door hides behind the fridge from this angle: spotlight the RUN paw instead.
+      if (!this.pawRect) this.pawRect = this.host.querySelector('.wr-runpaw')!.getBoundingClientRect();
+      const r = this.pawRect;
+      this.tour.place(r.left + r.width / 2, r.top + r.height / 2, r.width / 2 + 10, w, hh);
+    } else if (ta) {
+      const c = h.hotspotCenter(ta, this.labelPos);
+      const dist = h.camera.position.distanceTo(c);
+      const v = c.project(h.camera);
+      const px = hh / (2 * Math.tan((h.camera.fov * Math.PI) / 360) * dist);
+      this.tour.place(((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, Math.max(44, HOME.hotspot.halo[ta] * 0.42 * px), w, hh);
     }
     const seat = h.cat.holder.position;
     this.homeTrail.update(frameDt, 0, 0, h.previewOn ? 2 : 0, h.previewOn);

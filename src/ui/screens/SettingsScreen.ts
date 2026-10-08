@@ -26,6 +26,7 @@ export class SettingsScreen {
     private readonly onReset: () => void,
     private readonly onReplay: () => void,
     private readonly audio: AudioProbe,
+    private readonly onTour: () => void,
   ) {
     this.sheet = new Sheet(ctx.host, 'Settings');
     this.sheet.body.addEventListener('click', this.onClick);
@@ -61,6 +62,7 @@ export class SettingsScreen {
         .map((x, i) => `<rect x="${x}" y="4" width="3.5" height="12" rx="1.75" style="animation-delay:${i * -0.17}s"/>`)
         .join('')}</svg><div class="grow"><b>Audio</b><small></small></div><button class="wr-btn wr-btn-sm" data-act="test">Test sound</button></div>` +
       `<div class="wr-row"><div class="grow"><b>Replay intro</b><small>Watch the comic and tutorial again.</small></div><button class="wr-btn wr-btn-sm" data-act="replay">Replay</button></div>` +
+      `<div class="wr-row"><div class="grow"><b>Home tour</b><small>Show the room tour again.</small></div><button class="wr-btn wr-btn-sm" data-act="tour">Show</button></div>` +
       `<div class="wr-row"><div class="grow"><b>Reset progress</b><small>Wipes coins, cats and everything else.</small></div>
       <button class="wr-btn wr-btn-sm" data-act="reset">${this.confirm ? 'Tap again to confirm' : 'Reset'}</button></div>`;
     this.updateStatus();
@@ -78,6 +80,10 @@ export class SettingsScreen {
     } else if (t.dataset.act === 'test') {
       this.audio.test();
       window.setTimeout(this.updateStatus, 250);
+      return;
+    } else if (t.dataset.act === 'tour') {
+      this.sheet.close();
+      this.onTour();
       return;
     } else if (t.dataset.act === 'replay') {
       this.sheet.close();
