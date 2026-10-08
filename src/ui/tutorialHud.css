@@ -1,0 +1,118 @@
+.wr-tut {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Fredoka', sans-serif;
+  color: #2a201c;
+}
+.wr-tut[hidden] {
+  display: none;
+}
+.wr-tut-text {
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg) scale(0.8);
+  width: min(84vw, 360px);
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  font-size: 20px;
+  background: #fbf6ec;
+  border: 3px solid #2a201c;
+  border-radius: 16px 12px 17px 13px;
+  box-shadow: 3px 3px 0 #2a201c;
+  padding: 6px 12px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.wr-tut-text.on {
+  opacity: 1;
+  transform: translateX(-50%) rotate(-1deg) scale(1);
+}
+.wr-tut-frozen .wr-tut-text {
+  background: #fff1a8;
+}
+.wr-ghost {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  opacity: 0;
+}
+.wr-ghost .wr-paw-ico {
+  width: 100%;
+  height: 100%;
+  fill: rgba(251, 246, 236, 0.85);
+  stroke: #2a201c;
+  stroke-width: 1;
+}
+.wr-ghost-left-right {
+  animation: wr-g-lr 1s ease-in-out infinite;
+}
+.wr-ghost-left {
+  animation: wr-g-l 0.8s ease-in infinite;
+}
+.wr-ghost-right {
+  animation: wr-g-r 0.8s ease-in infinite;
+}
+.wr-ghost-up,
+.wr-ghost-up-up {
+  animation: wr-g-u 0.8s ease-in infinite;
+}
+.wr-ghost-down {
+  animation: wr-g-d 0.8s ease-in infinite;
+}
+@keyframes wr-g-lr {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(-90px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(90px);
+  }
+}
+@keyframes wr-g-l {
+  from {
+    opacity: 1;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-90px);
+  }
+}
+@keyframes wr-g-r {
+  from {
+    opacity: 1;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(90px);
+  }
+}
+@keyframes wr-g-u {
+  from {
+    opacity: 1;
+    transform: translateY(70px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-90px);
+  }
+}
+@keyframes wr-g-d {
+  from {
+    opacity: 1;
+    transform: translateY(-70px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(90px);
+  }
+}

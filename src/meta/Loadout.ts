@@ -21,6 +21,8 @@ export interface RunConfig {
   napBonusSec: number;
   startBubble: boolean;
   multiplier: number;
+  /** First real run after the tutorial: guaranteed fun (GAME_DESIGN 8.1). */
+  firstRun: boolean;
 }
 
 export function defaultRunConfig(): RunConfig {
@@ -37,6 +39,7 @@ export function defaultRunConfig(): RunConfig {
     napBonusSec: 0,
     startBubble: false,
     multiplier: 1,
+    firstRun: false,
   };
 }
 
@@ -57,5 +60,6 @@ export function computeRunConfig(p: Profile): RunConfig {
     napBonusSec: p.cat === 'sushi' ? CAT_PASSIVES.sushiNapBonusSec : 0,
     startBubble: p.cat === 'pixel',
     multiplier: p.missions.multiplier,
+    firstRun: p.flags.tutorialDone && !p.flags.firstRunDone,
   };
 }

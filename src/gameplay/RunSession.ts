@@ -4,7 +4,8 @@ import { Action } from '../core/Input';
 import { ABILITY } from '../data/abilities';
 import { BOSS } from '../data/boss';
 import { REVIVE } from '../data/chase';
-import { POWERUP_IDS, type PowerUpId } from '../data/powerups';
+import { POWERUP_IDS, POWERUP_SPAWN, type PowerUpId } from '../data/powerups';
+import { FIRST_RUN } from '../data/tutorial';
 import { SPAWNER } from '../data/spawner';
 import type { Profile } from '../meta/Save';
 import { Satchel } from '../meta/Satchel';
@@ -46,6 +47,8 @@ export class RunSession {
   caught = false;
   readonly stats: RunStatsCollector;
   config: RunConfig = defaultRunConfig();
+  /** Extra speed multiplier (the tutorial runs slow). */
+  slowMul = 1;
   private bankedCoins = 0;
   private bankedBones = 0;
   private wasBoss = false;
@@ -97,7 +100,9 @@ export class RunSession {
     if (config.startBubble) this.powerUps.bubble = true;
     this.abilities.reset(profile?.ability ?? ABILITY.default);
     this.abilities.napBonusSec = config.napBonusSec;
-    this.spawner.luck = config.luck;
+    this.spawner.luck = config.luck * (config.firstRun ? FIRST_RUN.luck : 1);
+    this.spawner.gapLoot = config.firstRun && FIRST_RUN.gapLoot;
+    this.slowMul = 1;
     this.spawner.catDoorMul = config.catDoorMul;
     this.stats.reset();
     this.secrets.reset(profile, now);
@@ -108,6 +113,11 @@ export class RunSession {
     this.bankedBones = 0;
     this.wasBoss = false;
     this.spawner.update(0, this.runner.speed);
+    if (config.firstRun) {
+      // Guaranteed fun: a Yarn Magnet early, then Catnip Frenzy.
+      this.field.addPickup(PickupKind.PowerUp, POWERUP_IDS.indexOf('magnet'), 0, FIRST_RUN.magnetAt, POWERUP_SPAWN.y);
+      this.field.addPickup(PickupKind.PowerUp, POWERUP_IDS.indexOf('catnip'), 0, FIRST_RUN.catnipAt, POWERUP_SPAWN.y);
+    }
   }
 
   /** Currency earned since the last bank call (so revives can spend Fish Bones found this run). */
@@ -193,7 +203,7 @@ export class RunSession {
     this.mods.clear();
     this.powerUps.step(dt, r, this.field, this.chase, this.collision);
     this.abilities.step(dt, r, this.mods);
-    r.speedMul = this.mods.speedMul;
+    r.speedMul = this.mods.speedMul * this.slowMul;
     this.score.tempMul = this.mods.scoreMul;
     this.keeper.coinMul = this.mods.coinMul * this.secrets.coinBonus * this.config.coinMul;
 

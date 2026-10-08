@@ -30,6 +30,7 @@ export class Chase {
   private passT = 0;
   private rushHit = false;
   private nextRushAt: number = PACK_RUSH.firstAtSec;
+  private rushDuration: number = PACK_RUSH.durationSec;
   private tauntCd = 0;
 
   constructor(
@@ -54,6 +55,7 @@ export class Chase {
     this.rushPhase = RushPhase.Idle;
     this.rushLeft = 0;
     this.nextRushAt = PACK_RUSH.firstAtSec;
+    this.rushDuration = PACK_RUSH.durationSec;
     this.tauntCd = 0;
   }
 
@@ -63,6 +65,20 @@ export class Chase {
     this.pounce = false;
     if (this.rushPhase !== RushPhase.Idle) this.endRush(false);
     this.nextRushAt = Math.max(this.nextRushAt, runTime + PACK_RUSH.everySec / 2);
+  }
+
+  /** Tutorial: no surprise Pack Rushes. */
+  suppressRushes(): void {
+    this.nextRushAt = Infinity;
+  }
+
+  /** Starts a Pack Rush now (tutorial mini version uses a short duration). */
+  startRush(durationSec: number, catLane: number): void {
+    this.rushPhase = RushPhase.Warn;
+    this.rushLeft = PACK_RUSH.warnSec;
+    this.rushDuration = durationSec;
+    this.boltSideX = (catLane < 1 ? catLane + 1 : catLane - 1) * LANES.width;
+    this.bus.emit('packRushWarn', 0);
   }
 
   /** Cardboard Box / boosts: the pack loses the trail and drops back. */
@@ -119,7 +135,7 @@ export class Chase {
         this.rushLeft -= dt;
         if (this.rushLeft <= 0) {
           this.rushPhase = RushPhase.Active;
-          this.rushLeft = PACK_RUSH.durationSec;
+          this.rushLeft = this.rushDuration;
           this.rushHit = false;
           this.boltX = this.boltSideX;
           this.startPass(r);
@@ -158,6 +174,7 @@ export class Chase {
   private endRush(survived: boolean): void {
     this.rushPhase = RushPhase.Idle;
     this.nextRushAt += PACK_RUSH.everySec;
+    this.rushDuration = PACK_RUSH.durationSec;
     this.bus.emit('packRushEnd', survived ? 1 : 0);
   }
 }

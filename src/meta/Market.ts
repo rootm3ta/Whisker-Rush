@@ -36,13 +36,14 @@ export function sellMul(p: Profile): number {
 }
 
 /** Sells `count` of one item; returns coins earned. */
-export function sell(p: Profile, id: string, count: number, board: readonly BoardEntry[], haggle = 1): number {
+export function sell(p: Profile, id: string, count: number, board: readonly BoardEntry[], haggle = 1, bonus = 1): number {
   const have = p.stash[id] ?? 0;
   const n = Math.min(have, count);
   if (n <= 0) return 0;
   const idx = itemIndex(id);
   // Haggle bonus applies to one item of the stack.
-  const coins = sellPrice(idx, board, sellMul(p), haggle) + (n - 1) * sellPrice(idx, board, sellMul(p));
+  const mul = sellMul(p) * bonus;
+  const coins = sellPrice(idx, board, mul, haggle) + (n - 1) * sellPrice(idx, board, mul);
   p.stash[id] = have - n;
   if (p.stash[id] === 0) delete p.stash[id];
   p.coins += coins;
@@ -50,14 +51,14 @@ export function sell(p: Profile, id: string, count: number, board: readonly Boar
 }
 
 /** Sells everything; returns coins and how many items were sold. */
-export function sellAll(p: Profile, board: readonly BoardEntry[]): { coins: number; items: number; socks: number } {
+export function sellAll(p: Profile, board: readonly BoardEntry[], bonus = 1): { coins: number; items: number; socks: number } {
   let coins = 0;
   let items = 0;
   const socks = p.stash.sock ?? 0;
   for (const id of Object.keys(p.stash)) {
     const n = p.stash[id];
     items += n;
-    coins += sell(p, id, n, board);
+    coins += sell(p, id, n, board, 1, bonus);
   }
   return { coins, items, socks };
 }

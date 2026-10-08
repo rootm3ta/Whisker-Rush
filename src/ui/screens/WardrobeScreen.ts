@@ -8,7 +8,7 @@ import type { MetaCtx } from './ctx';
 
 type Tab = 'cats' | Slot;
 
-const SOURCE_TEXT = { set: 'Collection Set', streak: '3-day streak', pass: 'Paw Pass', secret: "Tom's Secret Stock" } as const;
+const SOURCE_TEXT = { set: 'Collection Set', streak: '3-day streak', pass: 'Paw Pass', secret: "Tom's Secret Stock", gift: 'Gift' } as const;
 
 /** Wardrobe: pick a cat and mix accessories per slot, with a live 3D preview you can rotate. */
 export class WardrobeScreen {

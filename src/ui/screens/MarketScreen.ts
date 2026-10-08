@@ -4,6 +4,7 @@ import { ACCESSORIES } from '../../data/accessories';
 import { CONSUMABLES } from '../../data/economy';
 import { LOOT_MAPLE_LANE, RARITIES } from '../../data/pickups';
 import { TOM_LINES } from '../../data/tom';
+import { NEWCOMER } from '../../data/tutorial';
 import { dailyBoard, haggleBonus, secretStock, sellPrice, stockBucket, type BoardEntry } from '../../meta/Economy';
 import { buySecret, itemIndex, sell, sellAll, sellMul, setProgress, stashTotal, tradeSet } from '../../meta/Market';
 import { localDay } from '../../meta/Time';
@@ -22,6 +23,8 @@ export class MarketScreen {
   private board: BoardEntry[] = [];
   private line = '';
   private haggle = 1;
+  /** First visit: Tom pays the newcomer bonus on everything. */
+  private bonus = 1;
   private haggleUsed = false;
   private haggling = false;
   private haggleStart = 0;
@@ -37,13 +40,15 @@ export class MarketScreen {
     return this.sheet.isOpen;
   }
 
-  open(): void {
+  open(newcomer = false): void {
     this.board = dailyBoard(localDay(this.ctx.now()));
     this.tab = 'sell';
     this.haggle = 1;
     this.haggleUsed = false;
     this.haggling = false;
-    this.say(stashTotal(this.ctx.save.profile) === 0 ? 'empty' : 'greet');
+    this.bonus = newcomer ? NEWCOMER.sellMul : 1;
+    if (newcomer) this.line = NEWCOMER.tomIntro.join(' ');
+    else this.say(stashTotal(this.ctx.save.profile) === 0 ? 'empty' : 'greet');
     this.render();
     this.sheet.open();
   }
@@ -83,7 +88,8 @@ export class MarketScreen {
   private renderSell(): string {
     const p = this.ctx.save.profile;
     const chip = (e: BoardEntry) => `<span class="${e.mul > 1 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_MAPLE_LANE[e.item].name)} x${e.mul}</span>`;
-    let html = `<p class="wr-note">Today's board (resets at midnight):</p><div>${this.board.map(chip).join('')}</div>`;
+    let html = this.bonus > 1 ? `<p class="wr-chip-hot" style="display:block;text-align:center">Newcomer bonus: x${this.bonus} on everything today</p>` : '';
+    html += `<p class="wr-note">Today's board (resets at midnight):</p><div>${this.board.map(chip).join('')}</div>`;
     html += `<div class="wr-haggle">`;
     if (this.haggling) html += `<b>Stop the paw in the green!</b><div class="wr-meter"><div class="wr-needle"></div></div><button class="wr-btn wr-btn-sm" data-act="stop">Paw!</button>`;
     else if (this.haggle > 1) html += `<b>Haggled: +${Math.round((this.haggle - 1) * 100)}% on your next sale</b>`;
@@ -95,7 +101,7 @@ export class MarketScreen {
     for (const id of ids) {
       const i = itemIndex(id);
       const item = LOOT_MAPLE_LANE[i];
-      const each = sellPrice(i, this.board, sellMul(p));
+      const each = sellPrice(i, this.board, sellMul(p) * this.bonus);
       html += `<div class="wr-row"><span class="wr-swatch" style="background:${hex(RARITIES[item.rarity].color)};width:18px;height:18px"></span>
         <div class="grow"><b>${esc(item.name)}</b> x${p.stash[id]}<small>${RARITIES[item.rarity].name} · ${price(each)} each</small></div>
         <button class="wr-btn wr-btn-sm" data-sell="${id}" data-n="1">Sell 1</button>
@@ -143,7 +149,7 @@ export class MarketScreen {
     } else if (d.sell) {
       const n = Number(d.n);
       const isSock = d.sell === 'sock';
-      const coins = sell(p, d.sell, n, this.board, this.haggle);
+      const coins = sell(p, d.sell, n, this.board, this.haggle, this.bonus);
       const mul = this.board.find((b) => LOOT_MAPLE_LANE[b.item].id === d.sell)?.mul ?? 1;
       this.say(mul > 1 ? 'hot' : mul < 1 ? 'cold' : 'sell');
       this.haggle = 1;
@@ -152,7 +158,7 @@ export class MarketScreen {
       this.ctx.save.write();
       void coins;
     } else if (d.act === 'sellAll') {
-      const r = sellAll(p, this.board);
+      const r = sellAll(p, this.board, this.bonus);
       if (r.items === 0) return;
       this.say('sellAll');
       this.coinFall(MARKET.waterfallSteps);

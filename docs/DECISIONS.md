@@ -74,3 +74,14 @@ One line per judgment call.
 - M5: Paw Pass ships the free track only (30 tiers, stamps from runs, missions, sets, challenges and logins); the premium track comes with IAP in M9.
 - M5: Home is a real 3D room (separate scene) with raycast-tappable furniture and DOM washi-tape labels projected from 3D anchors. Miso is drawn at 0.62x in the room. Swipes on Home never start a run; RUN paw, front door, or keyboard Up/Space do.
 - M5: Not in this milestone: Photo Mode, outfit-set bonuses (Paris), Tip Jar (needs IAP), leaderboards, push notifications, crash replay clips.
+- M6: The intro is one comic page: three Three.js scenes rendered into stacked panel viewports through a custom ink + paper shader (depth and color Sobel edges with an 8 fps "boil" wobble, posterize, paper grain and fibres, wash-in reveal). Panels appear in sequence (about 8 s each, 24.6 s total) and earlier panels keep their parallax drift.
+- M6: The curved-world bend is switched off while the comic plays (it is a flat page) and restored after.
+- M6: Captions use Caveat (OFL, Google Fonts) as the handwritten font; Fredoka/Nunito stay for UI.
+- M6: Panel borders are SVG paths with slight hand wobble, drawn on with stroke-dash animation.
+- M6: Tutorial is the real RunSession at 0.65x speed with the spawner paused and a huge grace window. Each step places its setup 32 m ahead; time slows to 4% right before the obstacle until the right move is made, so it cannot be failed. A bot that only reacts to freezes finishes all 7 steps in the unit test.
+- M6: The tutorial's wall-kick step respawns its wall if the player runs past it; pickup steps respawn the pickup if missed.
+- M6: After "YOU'RE A NATURAL", the first real run starts in place (no menu). It has a Yarn Magnet at 75 m, Catnip at 260 m, 3x rare loot luck and loot in every quiet gap.
+- M6: After the first run, Old Tom always opens (even with an empty satchel) to introduce himself and pays a x2 newcomer bonus on everything for that visit.
+- M6: The free Bucket Hat waits until the player taps the Wardrobe after the first run (label pulses "Free hat!"); it is granted and equipped once.
+- M6: Saves from before onboarding existed (runs > 0) skip the first-session flow. Settings has "Replay intro" (comic + tutorial, no flags or rewards).
+- M6: `canShowInterstitial()` returns false for the first 3 sessions; there are no interstitials yet, this is the policy hook for M9.

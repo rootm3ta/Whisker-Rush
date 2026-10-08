@@ -39,6 +39,9 @@ export interface Profile {
   /** Secret Stock purchases as "bucket:id". */
   secretBought: string[];
   settings: { music: boolean; sfx: boolean; haptics: boolean };
+  /** First-session onboarding flags (GAME_DESIGN 8.1). */
+  flags: { introSeen: boolean; tutorialDone: boolean; firstRunDone: boolean; tomIntroDone: boolean; freeHatClaimed: boolean };
+  sessions: number;
   totals: Partial<Record<MissionStat, number>>;
 }
 
@@ -72,6 +75,8 @@ export function defaultProfile(): Profile {
     pass: { stamps: 0, claimed: [] },
     secretBought: [],
     settings: { music: true, sfx: true, haptics: true },
+    flags: { introSeen: false, tutorialDone: false, firstRunDone: false, tomIntroDone: false, freeHatClaimed: false },
+    sessions: 0,
     totals: {},
   };
 }
@@ -88,6 +93,8 @@ export function migrate(raw: unknown): Profile {
   merged.login = { ...base.login, ...(p.login ?? {}) };
   merged.missions = { ...base.missions, ...(p.missions ?? {}) };
   merged.pass = { ...base.pass, ...(p.pass ?? {}) };
+  // Players from before onboarding existed have already played: skip the first-session flow.
+  merged.flags = p.flags ? { ...base.flags, ...p.flags } : { ...base.flags, ...(p.runs ? { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true } : {}) };
   if (!merged.cats.includes('miso')) merged.cats = ['miso', ...merged.cats];
   return merged;
 }

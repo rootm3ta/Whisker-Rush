@@ -73,6 +73,8 @@ export class Spawner {
   hooks: SpawnHooks | null = null;
   /** Lucky Whiskers multiplier for rare loot. */
   luck = 1;
+  /** First run: every gap without a power-up gets a loot item. */
+  gapLoot = false;
   /** Noir's passive: cat door patterns appear more often. */
   catDoorMul = 1;
   private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
@@ -124,6 +126,8 @@ export class Spawner {
     } else if (roll < POWERUP_SPAWN.perGap + POWERUP_SPAWN.mysteryFish + POWERUP_SPAWN.letter) {
       const letter = this.hooks?.nextLetter(s) ?? -1;
       if (letter >= 0) this.field.addPickup(PickupKind.Letter, letter, x, s, y);
+    } else if (this.gapLoot) {
+      this.field.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck), x, s, LOOT.y);
     }
   }
 

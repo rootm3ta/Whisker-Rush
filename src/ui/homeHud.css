@@ -187,3 +187,16 @@
 .wr-covered .wr-ribbon {
   display: none;
 }
+
+.wr-label.wr-hl {
+  background: #d9562e;
+  color: #fbf6ec;
+  font-size: 16px;
+  animation: wr-hl 0.8s ease-in-out infinite;
+}
+@keyframes wr-hl {
+  50% {
+    filter: brightness(1.25);
+    padding: 4px 12px;
+  }
+}

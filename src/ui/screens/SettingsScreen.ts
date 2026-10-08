@@ -9,6 +9,7 @@ export class SettingsScreen {
   constructor(
     private readonly ctx: MetaCtx,
     private readonly onReset: () => void,
+    private readonly onReplay: () => void,
   ) {
     this.sheet = new Sheet(ctx.host, 'Settings');
     this.sheet.body.addEventListener('click', this.onClick);
@@ -28,6 +29,7 @@ export class SettingsScreen {
       row('music', 'Music') +
       row('sfx', 'Sound effects') +
       row('haptics', 'Haptics') +
+      `<div class="wr-row"><div class="grow"><b>Replay intro</b><small>Watch the comic and tutorial again.</small></div><button class="wr-btn wr-btn-sm" data-act="replay">Replay</button></div>` +
       `<div class="wr-row"><div class="grow"><b>Reset progress</b><small>Wipes coins, cats and everything else.</small></div>
       <button class="wr-btn wr-btn-sm" data-act="reset">${this.confirm ? 'Tap again to confirm' : 'Reset'}</button></div>`;
   }
@@ -40,6 +42,10 @@ export class SettingsScreen {
       const k = t.dataset.k as keyof typeof s;
       s[k] = !s[k];
       this.ctx.save.write();
+    } else if (t.dataset.act === 'replay') {
+      this.sheet.close();
+      this.onReplay();
+      return;
     } else if (t.dataset.act === 'reset') {
       if (!this.confirm) this.confirm = true;
       else {

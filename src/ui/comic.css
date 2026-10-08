@@ -1,0 +1,134 @@
+.wr-comic {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: auto;
+  font-family: 'Caveat', 'Nunito', cursive;
+  color: #2a201c;
+}
+.wr-comic[hidden],
+.wr-splash[hidden] {
+  display: none;
+}
+.wr-comic-borders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.wr-border {
+  fill: none;
+  stroke: #2a201c;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.wr-cap {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.wr-cap.on {
+  opacity: 1;
+}
+.wr-cap b {
+  align-self: flex-start;
+  font-size: 26px;
+  background: #fbf6ec;
+  border: 2.5px solid #2a201c;
+  padding: 0 10px;
+  transform: rotate(-2deg);
+}
+.wr-cap span {
+  align-self: flex-end;
+  max-width: 85%;
+  font-size: 21px;
+  line-height: 1.05;
+  background: #fff6c8;
+  border: 2.5px solid #2a201c;
+  padding: 2px 10px;
+  transform: rotate(1deg);
+}
+.wr-whistle {
+  position: absolute;
+  right: 26px;
+  bottom: 34%;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  color: #d9562e;
+  -webkit-text-stroke: 1.5px #2a201c;
+  transform: rotate(-12deg) scale(0);
+  transition: transform 0.15s cubic-bezier(0.2, 1.8, 0.4, 1);
+  pointer-events: none;
+}
+.wr-whistling .wr-whistle {
+  transform: rotate(-12deg) scale(1);
+}
+.wr-skip {
+  position: absolute;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  font-size: 16px;
+}
+.wr-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.wr-flash.on {
+  animation: wr-flash 0.35s ease-out forwards;
+}
+.wr-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  background: #f4ead6;
+}
+.wr-splash-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 34px;
+  color: #d9562e;
+  border: 5px double #d9562e;
+  border-radius: 24px 20px 26px 18px;
+  padding: 16px 26px 10px;
+  animation: wr-stamp-in 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+  transform: rotate(-6deg);
+}
+.wr-splash-stamp .wr-paw-ico {
+  width: 90px;
+  height: 90px;
+  fill: #d9562e;
+  stroke: none;
+}
+@keyframes wr-flash {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes wr-stamp-in {
+  from {
+    transform: rotate(-14deg) scale(2.4);
+    opacity: 0;
+  }
+}

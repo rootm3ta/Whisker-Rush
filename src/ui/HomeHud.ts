@@ -90,6 +90,14 @@ export class HomeHud {
     else this.labels.get(action)?.classList.toggle('wr-dot', on);
   }
 
+  /** Calls attention to one object (e.g. "Free hat!" on the Wardrobe). */
+  setHighlight(action: HomeAction | null, text = ''): void {
+    for (const [a, el] of this.labels) {
+      el.classList.toggle('wr-hl', a === action);
+      el.firstChild!.textContent = a === action && text ? text : HOME.labels[a];
+    }
+  }
+
   placeLabel(action: HomeAction, x: number, y: number, visible: boolean): void {
     const el = this.labels.get(action)!;
     el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%) rotate(${action.length % 2 ? -3 : 3}deg)`;

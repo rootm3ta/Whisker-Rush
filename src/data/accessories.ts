@@ -9,7 +9,7 @@ export interface AccessoryDef {
   /** Price in the Wardrobe; `source` items are earned elsewhere and not for sale. */
   coins?: number;
   fishBones?: number;
-  source?: 'set' | 'streak' | 'pass' | 'secret';
+  source?: 'set' | 'streak' | 'pass' | 'secret' | 'gift';
   colors: readonly number[];
 }
 
@@ -18,6 +18,7 @@ export const ACCESSORIES: Record<string, AccessoryDef> = {
   vikingHelmet: { name: 'Viking Helmet', slot: 'head', source: 'secret', colors: [0xa9b2bc, 0xf3ead8] },
   chefHat: { name: 'Chef Hat', slot: 'head', coins: 1500, colors: [0xfbfbf6] },
   crown: { name: 'Crown', slot: 'head', source: 'set', colors: [0xf2c14e, 0xd9483b] },
+  bucketHat: { name: 'Bucket Hat', slot: 'head', source: 'gift', colors: [0xe8d4b8, 0x6fa38a] },
   sombrero: { name: 'Tiny Sombrero', slot: 'head', source: 'secret', colors: [0xe8c27a, 0xd9483b] },
   aviators: { name: 'Aviators', slot: 'eyes', source: 'set', colors: [0x2a3a4a, 0xc9a24e] },
   heartGlasses: { name: 'Heart Glasses', slot: 'eyes', source: 'secret', colors: [0xe85d8a, 0x2a201c] },

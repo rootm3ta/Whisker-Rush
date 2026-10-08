@@ -64,6 +64,12 @@ const BUILD: Record<string, (c: readonly number[]) => THREE.Object3D> = {
     });
     return group(ring, ...spikes, mesh(new THREE.SphereGeometry(0.018, 6, 4), c[1], 0, R * 0.92, -0.105));
   },
+  bucketHat: (c) =>
+    group(
+      mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.1, 16), c[0], 0, R * 0.95, 0),
+      mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 18), c[0], 0, R * 0.9, 0),
+      mesh(new THREE.CylinderGeometry(0.141, 0.141, 0.03, 16), c[1], 0, R * 0.93, 0),
+    ),
   sombrero: (c) => group(mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 20), c[0], 0, R * 0.85, 0), mesh(new THREE.ConeGeometry(0.1, 0.16, 14), c[0], 0, R * 0.85 + 0.08, 0), mesh(new THREE.TorusGeometry(0.095, 0.012, 4, 14), c[1], 0, R * 0.85 + 0.02, 0)),
   // Eyes: in front of the face.
   aviators: (c) => {

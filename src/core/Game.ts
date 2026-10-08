@@ -46,6 +46,11 @@ import { addToStash } from '../meta/Market';
 import { canClaimTier, runStamps } from '../meta/Pass';
 import { loginState } from '../meta/Calendar';
 import { localDay } from '../meta/Time';
+import { Comic } from '../ui/Comic';
+import { Tutorial } from '../gameplay/Tutorial';
+import { TutorialHud } from '../ui/TutorialHud';
+import { TUTORIAL } from '../data/tutorial';
+import { claimFreeHat, freeHatPending, nextOnboarding } from '../meta/Onboarding';
 import { applyEnvironment } from '../world/Environment';
 import { Track } from '../world/Track';
 import { EventBus } from './EventBus';
@@ -55,7 +60,7 @@ import { FixedLoop } from './Loop';
 import { Rng } from './Rng';
 import { StateMachine } from './StateMachine';
 
-export type AppState = 'boot' | 'home' | 'run' | 'paused' | 'crashing' | 'gameOver' | 'reviving';
+export type AppState = 'boot' | 'comic' | 'home' | 'run' | 'paused' | 'crashing' | 'gameOver' | 'reviving';
 
 /** Wires simulation, rendering, input, platform services and app flow together. */
 export class Game {
@@ -96,6 +101,12 @@ export class Game {
   private readonly metaRng = new Rng((Date.now() ^ 0x5bd1e995) >>> 0);
   private readonly labelPos = new THREE.Vector3();
   private pokes = 0;
+  private readonly comic: Comic;
+  private readonly tutorial: Tutorial;
+  private readonly tutorialHud: TutorialHud;
+  /** Replaying the intro from Settings: no flags change, back home afterwards. */
+  private replaying = false;
+  private tutorialDoneT = -1;
   private dragX: number | null = null;
   private readonly hud: Hud;
   private readonly gameOver: GameOver;
@@ -168,12 +179,25 @@ export class Game {
       missions: new MissionsScreen(ctx),
       calendar: new CalendarScreen(ctx),
       pass: new PassScreen(ctx),
-      settings: new SettingsScreen(ctx, () => {
-        this.save.reset();
-        this.fsm.go('boot');
-        this.fsm.go('home');
-      }),
+      settings: new SettingsScreen(
+        ctx,
+        () => {
+          this.save.reset();
+          this.fsm.go('boot');
+        },
+        () => this.playIntro(true),
+      ),
     };
+    this.comic = new Comic(host);
+    this.comic.onDone = () => {
+      if (!this.replaying) {
+        this.save.profile.flags.introSeen = true;
+        this.save.write();
+      }
+      this.startTutorial();
+    };
+    this.tutorial = new Tutorial(this.bus, this.run);
+    this.tutorialHud = new TutorialHud(host);
     this.input = new Input(host, () => this.simTime);
     this.input.onTap = () => {
       if (this.fsm.is('paused')) this.fsm.go('run');
@@ -190,26 +214,36 @@ export class Game {
 
     this.fsm = new StateMachine<AppState>(
       {
-        boot: {},
+        boot: {
+          enter: () => {
+            this.save.profile.sessions++;
+            this.save.write();
+            this.homeHud.visible = false;
+            this.overlay.hide();
+            this.comic.showSplash();
+          },
+          update: (dt) => {
+            if (!this.comic.updateSplash(dt)) return;
+            const next = nextOnboarding(this.save.profile);
+            if (next === 'comic') this.playIntro(false);
+            else if (next === 'tutorial') this.startTutorial();
+            else this.fsm.go('home');
+          },
+        },
+        comic: {
+          enter: () => {
+            this.homeHud.visible = false;
+            this.comic.start();
+          },
+        },
         home: {
           enter: () => {
-            const p = this.save.profile;
-            this.run.reset(undefined, p, Date.now(), computeRunConfig(p));
-            this.track.reset();
-            this.input.buffer.clear();
-            this.hud.reset();
-            this.hud.visible = false;
-            this.powerHud.visible = false;
-            this.powerHud.setAbility(p.ability);
-            this.powerHud.setRoombaCount(p.inventory.roomba);
-            this.powerHud.setHunt(this.run.secrets.word, p.hunt.found);
-            this.fieldView.word = this.run.secrets.word;
-            this.setAlleyLook(false);
-            this.freshRun = true;
-            this.gameOver.hide();
+            this.prepareRun();
             this.overlay.hide();
             this.homeHud.visible = true;
             this.refreshMeta();
+            const hat = freeHatPending(this.save.profile);
+            this.homeHud.setHighlight(hat ? 'wardrobe' : null, hat ? 'Free hat!' : '');
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
           exit: () => {
@@ -233,6 +267,7 @@ export class Game {
             this.input.buffer.process(this.simTime, this.handleRunAction);
             this.run.step(dt);
             this.track.step(this.run.runner.distance);
+            if (this.tutorial.active) this.updateTutorial(dt);
             if (this.run.crashed) this.fsm.go('crashing');
           },
         },
@@ -293,8 +328,73 @@ export class Game {
 
   start(): void {
     this.fsm.go('boot');
-    this.fsm.go('home');
     this.loop.start();
+  }
+
+  /** Resets the run session, track and HUD for a fresh run (no state change). */
+  private prepareRun(): void {
+    const p = this.save.profile;
+    this.run.reset(undefined, p, Date.now(), computeRunConfig(p));
+    this.track.reset();
+    this.input.buffer.clear();
+    this.hud.reset();
+    this.hud.visible = false;
+    this.powerHud.visible = false;
+    this.powerHud.setAbility(p.ability);
+    this.powerHud.setRoombaCount(p.inventory.roomba);
+    this.powerHud.setHunt(this.run.secrets.word, p.hunt.found);
+    this.fieldView.word = this.run.secrets.word;
+    this.setAlleyLook(false);
+    this.freshRun = true;
+    this.gameOver.hide();
+    this.cat.setLook(p.cat, p.outfit);
+    this.trail.setTrail(p.outfit.trail);
+  }
+
+  private playIntro(replay: boolean): void {
+    this.replaying = replay;
+    this.fsm.go('comic');
+  }
+
+  /** Smash cut from the comic straight into the tutorial run, no menu in between. */
+  private startTutorial(): void {
+    this.prepareRun();
+    this.freshRun = false;
+    this.run.slowMul = TUTORIAL.speedMul;
+    this.tutorial.start();
+    this.tutorialHud.visible = true;
+    this.tutorialDoneT = -1;
+    this.fsm.go('run');
+  }
+
+  private updateTutorial(dt: number): void {
+    const t = this.tutorial;
+    t.update(dt);
+    if (!t.finished) return;
+    if (this.tutorialDoneT < 0) {
+      this.tutorialDoneT = TUTORIAL.doneStampSec;
+      this.hud.stamp(TUTORIAL.done, STAMP_COLORS.stunt);
+      return;
+    }
+    this.tutorialDoneT -= dt;
+    if (this.tutorialDoneT > 0) return;
+    t.stop();
+    this.tutorialHud.visible = false;
+    if (this.replaying) {
+      this.replaying = false;
+      this.fsm.go('home');
+      return;
+    }
+    // Straight into the first real run, which is guaranteed fun.
+    this.save.profile.flags.tutorialDone = true;
+    this.save.write();
+    this.prepareRun();
+    this.freshRun = false;
+    this.hud.visible = true;
+    this.powerHud.visible = true;
+    const inv = this.save.profile.inventory;
+    this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec);
+    this.hud.stamp(TUTORIAL.nowForReal, STAMP_COLORS.nearMiss);
   }
 
   private wireEvents(): void {
@@ -475,9 +575,15 @@ export class Game {
     this.applyMetaStats(run.stats.snapshot(distance, run.score.coins));
     this.save.recordRun(run.score.points, distance);
     this.fx.setDizzy(false);
+    const first = run.config.firstRun;
+    if (first) p.flags.firstRunDone = true;
+    const newcomer = !p.flags.tomIntroDone && p.flags.firstRunDone;
+    if (newcomer) p.flags.tomIntroDone = true;
+    this.save.write();
     this.fsm.go('home');
     if (overflow > 0) popup(this.host, 'Stash full', [`Tom bought the overflow for ${overflow} coins.`]);
-    if (loot.length > 0) this.market.open();
+    // First run: Old Tom introduces himself and pays a newcomer bonus. Later: only with loot.
+    if (newcomer || loot.length > 0) this.market.open(newcomer);
   }
 
   /** Feeds stats to missions/challenges and pops up anything completed. */
@@ -541,6 +647,15 @@ export class Game {
       case 'miso':
         this.homeHud.say(this.home.poke(this.pokes++), x, y - 20);
         break;
+      case 'wardrobe':
+        if (claimFreeHat(this.save.profile)) {
+          this.save.write();
+          this.refreshMeta();
+          this.homeHud.setHighlight(null);
+          popup(this.host, 'Free hat!', ['A Bucket Hat, on the house.', 'Miso is wearing it already.']);
+        }
+        this.screens.wardrobe.open();
+        break;
       default:
         this.screens[a].open();
     }
@@ -580,6 +695,11 @@ export class Game {
       this.slowLeft -= realDt;
       this.timeScale = this.slowLeft > 0 ? REFLEX.timeScale : 1;
     }
+    if (this.tutorial.active && this.fsm.is('run')) {
+      this.timeScale = this.tutorial.frozen ? TUTORIAL.freezeScale : 1;
+      // Real-time countdown for the end stamp, even though the world may be frozen.
+      if (this.tutorial.finished) this.timeScale = 1;
+    }
     const dt = realDt * this.timeScale;
     this.simTime += dt;
     this.fsm.update(dt);
@@ -610,6 +730,15 @@ export class Game {
       this.renderHome(frameDt);
       return;
     }
+    if (this.fsm.is('boot') || this.fsm.is('comic')) {
+      if (this.comic.active) this.comic.render(this.renderer, frameDt);
+      else {
+        this.renderer.setClearColor(0xf4ead6, 1);
+        this.renderer.clear();
+      }
+      return;
+    }
+    if (this.tutorial.active) this.tutorialHud.update(this.tutorial);
     const run = this.run;
     const r = run.runner;
     const fsm = this.fsm;
@@ -675,5 +804,6 @@ export class Game {
     this.renderer.setSize(w, h, false);
     this.rig.resize(w / h);
     this.home.resize(w / h);
+    if (this.comic?.active) this.comic.layout();
   };
 }
