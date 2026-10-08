@@ -74,6 +74,12 @@ import { KITS } from '../procgen/cityKits';
 import { MapScreen } from '../ui/screens/MapScreen';
 import type { CityId } from '../data/cities';
 import { Track } from '../world/Track';
+import { CityCard } from '../ui/CityCard';
+import { curveUniforms } from '../render/ToonMaterial';
+import { LOOT_ITEMS } from '../data/pickups';
+import { OBSTACLES } from '../data/obstacles';
+import { screenUniforms } from '../procgen/signs';
+import type { BasePalette } from '../data/cities';
 import { EventBus } from './EventBus';
 import type { GameEvents } from './events';
 import { Action, Input } from './Input';
@@ -95,6 +101,13 @@ export class Game {
   private track: Track;
   private readonly env: Environment;
   private city: CityId = 'mapleLane';
+  /** Current district of the city (-1 before a run starts). */
+  private district = -1;
+  private districtParticles: string | undefined;
+  /** Debug: start runs in district N (`?district=N`, debug builds and headless checks). */
+  private readonly debugDistrict = Number(new URLSearchParams(location.search).get('district') ?? 0) || 0;
+  private petalT = 0;
+  private readonly cityCard: CityCard;
   private readonly map: MapScreen;
   private readonly fieldView = new FieldView();
   private readonly cat: Cat;
@@ -227,6 +240,20 @@ export class Game {
     for (const ev of Object.keys(WINDOW.events) as WindowEvent[]) this.debug.add('Ambient events', ev, () => this.home.windowView.play(ev));
     for (const tod of Object.keys(WINDOW.times) as TimeOfDay[]) this.debug.add('Time of day', tod, () => this.home.setTime(tod));
     this.debug.add('Home', 'Replay tour', () => this.replayTour());
+    // Per city: force every hazard, the boss, the Pack Rush, secrets, loot and districts.
+    for (const c of Object.values(CITIES)) {
+      const sec = `${c.name} (start a run there first)`;
+      for (const id of Object.keys(c.obstacles)) this.debug.add(sec, id, () => this.run.debugObstacle(id, OBSTACLES[id].rolls && OBSTACLES[id].rolls! < -10 ? 2.4 : 0));
+      this.debug.add(sec, 'BOSS', () => this.run.debugBoss());
+      this.debug.add(sec, 'PACK RUSH', () => this.run.debugRush());
+      this.debug.add(sec, 'CAT DOOR', () => this.run.debugAlley());
+      this.debug.add(sec, 'BELL', () => this.run.debugBell());
+      if (c.powerVariant) this.debug.add(sec, c.powerVariant.name, () => this.run.activatePowerUp(c.powerVariant!.of));
+      for (const l of c.loot) this.debug.add(sec, `loot:${l.id}`, () => this.run.debugLoot(l.id));
+      (c.districts ?? []).forEach((d, i) => this.debug.add(sec, `district:${d.name}`, () => this.applyDistrict(i, true)));
+      if (c.postcard) this.debug.add(sec, 'postcard comic', () => this.cityCard.postcard(c.id));
+      if (c.card) this.debug.add(sec, 'travel card', () => this.cityCard.travel(c.id));
+    }
     const ctx: MetaCtx = {
       save: this.save,
       rng: this.metaRng,
@@ -247,7 +274,11 @@ export class Game {
     this.market = new MarketScreen(ctx);
     this.shop = new ShopScreen(ctx, this.iap);
     this.odds = new OddsScreen(ctx);
-    this.map = new MapScreen(ctx, () => this.prepareRun());
+    this.cityCard = new CityCard(host);
+    this.map = new MapScreen(ctx, () => {
+      this.prepareRun();
+      this.cityCard.travel(this.city);
+    });
     this.screens = {
       upgrades: new UpgradesScreen(ctx),
       wardrobe: new WardrobeScreen(ctx, (on) => {
@@ -426,6 +457,8 @@ export class Game {
     const p = this.save.profile;
     const config = computeRunConfig(p);
     this.setCity(config.city);
+    this.district = -1;
+    this.applyDistrict(this.debugDistrict % (CITIES[this.city].districts?.length ?? 1), false);
     this.run.reset(undefined, p, Date.now(), config);
     this.track.reset();
     this.input.buffer.clear();
@@ -495,7 +528,11 @@ export class Game {
       this.rig.addShake(impact * CAMERA.landShake);
       if (impact > CAMERA.landKick * 4) this.rig.addKick(CAMERA.landKick);
     });
-    b.on('zoneChange', () => this.rig.addKick(CAMERA.landKick));
+    b.on('zoneChange', (zone) => {
+      this.rig.addKick(CAMERA.landKick);
+      const n = CITIES[this.city].districts?.length ?? 0;
+      if (n > 0) this.applyDistrict((zone + this.debugDistrict) % n, true);
+    });
     b.on('nearMiss', () => {
       this.slowLeft = REFLEX.durationSec;
       this.hud.stamp(UI_TEXT.nearMiss, STAMP_COLORS.nearMiss);
@@ -549,7 +586,14 @@ export class Game {
     });
     b.on('packRushEnd', () => this.hud.setRush(false));
     const stamp = (t: string, c: string = STAMP_COLORS.stunt) => this.hud.stamp(t, c);
-    b.on('powerStart', (i) => stamp(POWERUPS[POWERUP_IDS[i]].name.toUpperCase() + '!', STAMP_COLORS.loot));
+    b.on('powerStart', (i) => {
+      const id = POWERUP_IDS[i];
+      const v = CITIES[this.city].powerVariant;
+      const variant = v && v.of === id && this.fsm.is('run') ? v : null;
+      stamp((variant ? variant.name : POWERUPS[id].name).toUpperCase() + '!', STAMP_COLORS.loot);
+      if (variant?.bonusLoot) this.run.dropLootAhead(variant.bonusLoot);
+      if (variant?.sfx) this.audio.play(variant.sfx);
+    });
     b.on('shieldPop', (k) => {
       stamp(k === 0 ? UI_TEXT.pop : UI_TEXT.roombaOff, STAMP_COLORS.warn);
       this.rig.addShake(0.15);
@@ -569,7 +613,7 @@ export class Game {
     b.on('mysteryFish', () => stamp(UI_TEXT.mystery, STAMP_COLORS.loot));
     b.on('gag', (g) => stamp(UI_TEXT.gags[g], STAMP_COLORS.warn));
     b.on('catDoor', () => {
-      stamp(UI_TEXT.catDoor, STAMP_COLORS.loot);
+      stamp(CITIES[this.city].alley?.name ?? UI_TEXT.catDoor, STAMP_COLORS.loot);
       this.setAlleyLook(true);
     });
     b.on('alleyEnd', () => this.setAlleyLook(false));
@@ -587,8 +631,42 @@ export class Game {
       this.env.fog.color.copy(this.alleyColor);
       this.scene.background = this.alleyColor;
     } else {
-      this.env.setPalette(CITIES[this.city].palette);
+      this.env.setPalette(this.districtPalette());
     }
+  }
+
+  /** The city palette with the current district's overrides. */
+  private districtPalette(): BasePalette {
+    const c = CITIES[this.city];
+    const d = c.districts?.[Math.max(0, this.district)];
+    return d?.palette ? { ...c.palette, ...d.palette } : c.palette;
+  }
+
+  /** Ambient district particles: falling sakura petals, ramen steam, autumn leaves. */
+  private districtFx(dt: number, dist: number): void {
+    this.petalT -= dt;
+    if (this.petalT > 0) return;
+    this.petalT = 0.06;
+    const k = this.districtParticles;
+    const P = this.juice.particles;
+    const rx = (Math.random() - 0.5) * 16;
+    const z = dist + 10 + Math.random() * 45;
+    if (k === 'petals') P.spawn(rx, 5 + Math.random() * 3, z, 0.6 + Math.random(), -0.9, 0, 4, 0.16, 0.08, 3, Math.random() < 0.5 ? 0xf7c6d9 : 0xfbe3ec, true);
+    else if (k === 'leaves') P.spawn(rx, 4 + Math.random() * 2, z, 1.2, -0.8, 0, 4, 0.18, 0.1, 3, Math.random() < 0.5 ? 0xd98a3a : 0xc8682a, true);
+    else if (k === 'steam' && Math.random() < 0.4) P.spawn((Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 2), 1.2, z, 0, 0.8, 0, 2.2, 0.6, -0.05, 0, 0xf3eee6, true);
+  }
+
+  /** Switches to a district: sky, fog and light, night music, road bend, ambient particles. */
+  private applyDistrict(i: number, announce: boolean): void {
+    if (i === this.district) return;
+    this.district = i;
+    const c = CITIES[this.city];
+    const d = c.districts?.[i];
+    this.env.setPalette(this.districtPalette());
+    this.audio.setNight(!!d?.night);
+    curveUniforms.uCurveSide.value = RENDER.curveSide * (d?.curveSide ?? 1);
+    this.districtParticles = d?.particles;
+    if (announce && d) this.hud.stamp(d.name, STAMP_COLORS.stunt);
   }
 
   /**
@@ -601,7 +679,9 @@ export class Game {
     const c = CITIES[id];
     this.scene.remove(this.track.root);
     this.track.dispose();
-    this.track = new Track(KITS[id]);
+    this.track = new Track(KITS[id], c.districts?.length ?? 1, this.debugDistrict);
+    this.audio.setAmbience(c.ambience);
+    this.alleyColor.setHex(c.alley?.fog ?? CAT_DOOR.fog);
     this.scene.add(this.track.root);
     this.env.setPalette(c.palette);
     this.pack.setPups(c.dogs.pups[0], c.dogs.rush);
@@ -778,6 +858,12 @@ export class Game {
     const loot: number[] = [];
     for (let i = 0; i < run.satchel.count; i++) loot.push(run.satchel.at(i));
     const overflow = addToStash(p, loot);
+    // Postcard fragments: five complete a city's postcard comic.
+    const pcId = `postcard${this.city[0].toUpperCase()}${this.city.slice(1)}`;
+    const before = p.postcards[this.city] ?? 0;
+    const found = loot.filter((i) => LOOT_ITEMS[i].id === pcId).length;
+    if (found) p.postcards[this.city] = before + found;
+    const postcardDone = before < 5 && before + found >= 5 && !!CITIES[this.city].postcard;
     p.revives += run.revives.total;
     this.applyMetaStats(run.stats.snapshot(distance, run.score.coins));
     fillTipJar(p, distance);
@@ -796,6 +882,7 @@ export class Game {
     this.save.write();
     this.fsm.go('home');
     if (overflow > 0) popup(this.host, 'Stash full', [`Tom bought the overflow for ${overflow} coins.`]);
+    if (postcardDone) this.cityCard.postcard(this.city);
     // First run: Old Tom introduces himself and pays a newcomer bonus. Later: only with loot.
     if (newcomer || loot.length > 0) this.market.open(newcomer);
   }
@@ -1004,6 +1091,7 @@ export class Game {
   }
 
   private readonly render = (alpha: number, frameDt: number): void => {
+    screenUniforms.uTime.value += frameDt;
     if (this.fsm.is('home')) {
       this.renderHome(frameDt);
       return;
@@ -1089,6 +1177,7 @@ export class Game {
     this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0, r.flying && !afterCrash);
     if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
     this.trail.update(dt, x, d.y + d.lift, r.speed, running && !d.boxed);
+    if (running && this.districtParticles) this.districtFx(frameDt, dist);
     this.juice.update(frozen ? 0 : afterCrash ? frameDt : dt, {
       x,
       y: d.y,

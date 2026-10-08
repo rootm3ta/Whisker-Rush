@@ -1,5 +1,6 @@
 import { MAPLE_LANE } from './city/mapleLane';
 import { ROME } from './city/rome';
+import { TOKYO } from './city/tokyo';
 /** Coins, loot, Fish Bones and Satchel (GAME_DESIGN 4.1, 4.2). */
 export const COIN = {
   /** Default coin height above its surface (m). */
@@ -33,7 +34,7 @@ export interface LootItem {
 }
 
 /** Every loot item in the game. Append-only: Satchel slots store indices into this list. */
-export const LOOT_ITEMS: readonly LootItem[] = [...MAPLE_LANE.loot, ...ROME.loot];
+export const LOOT_ITEMS: readonly LootItem[] = [...MAPLE_LANE.loot, ...ROME.loot, ...TOKYO.loot];
 
 export const SOCK_ITEM = LOOT_ITEMS.findIndex((i) => i.id === 'sock');
 

@@ -16,6 +16,10 @@ export class Dog {
   private taunt = 0;
   private face = 0;
 
+  get style(): DogDef['style'] {
+    return this.def.style;
+  }
+
   constructor(private readonly def: DogDef) {
     this.rig = buildDog(def);
   }

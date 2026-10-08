@@ -1,5 +1,6 @@
 import { MAPLE_LANE } from './city/mapleLane';
 import { ROME } from './city/rome';
+import { TOKYO } from './city/tokyo';
 
 /** Obstacle ids are strings: each city file adds its own. Geometry is authored front face at z=0 extending to -length. */
 export type ObstacleId = string;
@@ -29,9 +30,19 @@ export interface ObstacleDef {
   tints?: readonly number[];
   /** Drives along slower than the cat and changes lanes (Rome's Vespas). */
   weaves?: boolean;
-  /** Hangs overhead until the cat gets close, then drops into the lane (falling laundry). */
+  /** Hangs overhead until the cat gets close, then drops into the lane (falling laundry, swooping crows). */
   drops?: boolean;
+  /** Moves along the track at this speed (m/s): positive drives away (robots), negative comes at you (barrels, trains). */
+  rolls?: number;
+  /** Sound played once when the cat approaches (crossing chime, railway bell, crow caw...). */
+  warn?: WarnSound;
+  /** Placed off the road at this |x| instead of in a lane (a train on the side track). */
+  sideX?: number;
 }
+
+/** Warning sounds hazards can play as the cat approaches. */
+export const WARN_SOUNDS = ['chime', 'bell', 'caw', 'horn', 'steam', 'rumble'] as const;
+export type WarnSound = (typeof WARN_SOUNDS)[number];
 
 import { base } from './obstacleBase';
 
@@ -42,7 +53,7 @@ const SHARED: Record<string, ObstacleDef> = {
   parcel: { ...base, length: 0.9, halfWidth: 0.9, body: [0, 0.95], lethal: true, capacity: 12 },
 };
 
-export const OBSTACLES: Record<ObstacleId, ObstacleDef> = { ...SHARED, ...MAPLE_LANE.obstacles, ...ROME.obstacles };
+export const OBSTACLES: Record<ObstacleId, ObstacleDef> = { ...SHARED, ...MAPLE_LANE.obstacles, ...ROME.obstacles, ...TOKYO.obstacles };
 
 export const OBSTACLE_IDS = Object.keys(OBSTACLES) as ObstacleId[];
 

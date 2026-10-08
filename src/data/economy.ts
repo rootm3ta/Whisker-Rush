@@ -97,6 +97,9 @@ export const SETS = [
   { id: 'toyBox', name: 'Toy Box', items: ['toyMouse', 'feather', 'goldenMouse'], reward: { kind: 'accessory', id: 'crown' } },
   { id: 'fancyThings', name: 'Fancy Things', items: ['shinySpoon', 'silverBell', 'lostEarring', 'grandmasBrooch'], reward: { kind: 'cat', id: 'mittens' } },
   { id: 'dukesStuff', name: "Duke's Stuff", items: ['dukesSunglasses', 'postcardFragment', 'vintageStamp'], reward: { kind: 'accessory', id: 'aviators' } },
+  // City sets: their bonus applies only in that city.
+  { id: 'shrineVisit', name: 'Shrine Visit', items: ['omamori', 'emaPlaque', 'templeBell', 'fortuneSlip'], reward: { kind: 'accessory', id: 'headphones' }, city: 'tokyo', cityBonus: 0.03 },
+  { id: 'supraTable', name: 'Supra Table', items: ['khinkali', 'hornCup', 'tonisPuri', 'qvevriShard'], reward: { kind: 'accessory', id: 'hornCharm' }, city: 'tbilisi', cityBonus: 0.03 },
 ] as const;
 
 export const SET_COIN_BONUS = 0.02;

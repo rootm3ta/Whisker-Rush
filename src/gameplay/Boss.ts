@@ -36,6 +36,11 @@ export class Boss {
     return this.phase !== BossPhase.Idle;
   }
 
+  /** Debug: start the boss chase at the next step. */
+  forceSoon(distance: number): void {
+    if (this.phase === BossPhase.Idle) this.nextAt = distance;
+  }
+
   reset(): void {
     this.phase = BossPhase.Idle;
     this.nextAt = BOSS.every;

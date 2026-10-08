@@ -20,6 +20,8 @@ export interface Pattern {
   weight: number;
   length: number;
   entries: PatternEntry[];
+  /** Only spawns in these districts (index into the city's `districts`); omitted = anywhere. */
+  districts?: readonly number[];
 }
 
 export const L = -1 as const;

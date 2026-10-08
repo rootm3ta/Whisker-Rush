@@ -1,5 +1,5 @@
 import { Rng } from '../core/Rng';
-import { LANES } from '../data/runner';
+import { LANES, ZONE } from '../data/runner';
 import { LOOT, LOOT_ITEMS, RARITIES, RARITY_DISTANCE_BONUS, SOCK_ITEM, COIN, type Rarity } from '../data/pickups';
 import { OBSTACLES } from '../data/obstacles';
 import type { Pattern } from '../data/patterns';
@@ -85,6 +85,8 @@ export class Spawner {
   private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
   private nextS: number = SPAWNER.firstAt;
   private tiers: Pattern[][] = tiersOf(CITIES.mapleLane.patterns);
+  /** Per-district tier lists (district-only patterns join their district's list). */
+  private byDistrict: Pattern[][][] = [];
   city: CityId = 'mapleLane';
   private last: Pattern | null = null;
   private readonly rng = new Rng(SPAWNER.seed);
@@ -101,7 +103,19 @@ export class Spawner {
   /** Switches the pattern library and loot set to a city. */
   setCity(city: CityId): void {
     this.city = city;
-    this.tiers = tiersOf(CITIES[city].patterns);
+    const c = CITIES[city];
+    this.tiers = tiersOf(c.patterns.filter((p) => !p.districts));
+    const n = c.districts?.length ?? 0;
+    this.byDistrict = [];
+    for (let d = 0; d < n; d++) this.byDistrict.push(tiersOf(c.patterns.filter((p) => !p.districts || p.districts.includes(d))));
+  }
+
+  /** Pattern list for a tier at track position `s` (district-aware). */
+  private listFor(tier: number, s: number): Pattern[] {
+    const n = this.byDistrict.length;
+    if (n === 0) return this.tiers[tier - 1];
+    const l = this.byDistrict[Math.floor(s / ZONE.lengthM) % n][tier - 1];
+    return l.length ? l : this.tiers[tier - 1];
   }
 
   /** Resume placing patterns from `s` onward. */
@@ -117,7 +131,7 @@ export class Spawner {
     }
     while (this.nextS < distance + SPAWNER.aheadM) {
       const tier = pickTier(this.nextS, this.rng);
-      const p = pickPattern(this.tiers[tier - 1], this.rng, this.last, this.weightOf);
+      const p = pickPattern(this.listFor(tier, this.nextS), this.rng, this.last, this.weightOf);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
       this.last = p;
       const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
@@ -153,9 +167,12 @@ export class Spawner {
       const s = s0 + e.z;
       switch (e.t) {
         case 'o': {
-          const tints = OBSTACLES[e.id].tints;
+          const def = OBSTACLES[e.id];
+          const tints = def.tints;
           const color = tints ? rng.pick(tints) : 0xffffff;
-          f.addObstacle(e.id, x, s, e.len ?? OBSTACLES[e.id].length, color);
+          // Side-track things keep their side (the kit builds the track there), even in mirrored patterns.
+          const ox = def.sideX !== undefined ? Math.sign(e.lane || 1) * def.sideX : x;
+          f.addObstacle(e.id, ox, s, e.len ?? def.length, color);
           break;
         }
         case 'coins':

@@ -15,6 +15,7 @@ export class DogPack {
   private pickle = new Dog(DOGS.pickle);
   private bolt = new Dog(DOGS.bolt);
   private x = 0;
+  private t = 0;
 
   constructor() {
     this.root.add(this.duke.rig.root, this.pickle.rig.root, this.bolt.rig.root);
@@ -34,12 +35,14 @@ export class DogPack {
 
   update(dt: number, chase: Chase, catX: number, speed: number, mode: number): void {
     this.x += (catX - this.x) * (1 - Math.exp(-CHASE.followRate * dt));
+    this.t += dt;
     const gap = chase.gap;
     const ratio = speed / SPEED.start;
     const running = mode !== PackMode.Gloat;
     const face = mode === PackMode.Gloat;
     const visible = gap < CHASE.visibleGap;
-    const lunge = chase.lunge > 0 ? Math.sin((chase.lunge / CHASE.lungeSec) * Math.PI) * CHASE.lungeDist : 0;
+    const push = this.pickle.style === 'push' ? 1.5 : 1;
+    const lunge = chase.lunge > 0 ? Math.sin((chase.lunge / CHASE.lungeSec) * Math.PI) * CHASE.lungeDist * push : 0;
 
     const d = this.duke.rig.root;
     d.visible = visible;
@@ -66,6 +69,8 @@ export class DogPack {
       bz = -chase.boltAhead;
       bVisible = true;
     }
+    // Shibas feint: quick side-steps while they run.
+    if (this.bolt.style === 'feint' && running) bx += Math.sin(this.t * 5.3) * 0.45 * Math.max(0, Math.sin(this.t * 1.7));
     b.visible = bVisible;
     b.position.set(bx, 0, bz);
     this.bolt.update(dt, ratio * 1.2, running, face);

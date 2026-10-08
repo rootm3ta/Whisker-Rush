@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TRACK as T } from '../data/track';
+import { ZONE } from '../data/runner';
 import { Rng } from '../core/Rng';
 import { createToonMaterial } from '../render/ToonMaterial';
 import type { CityKit, LayoutCtx } from '../procgen/city/kit';
@@ -28,14 +29,19 @@ export class Track {
   private current: Chunk | null = null;
   private readonly ctx: LayoutCtx;
 
-  constructor(private readonly kit: CityKit) {
+  constructor(
+    private readonly kit: CityKit,
+    private readonly districts = 1,
+    /** Debug: shift which district each chunk belongs to (`?district=N`). */
+    private readonly districtOffset = 0,
+  ) {
     const street = kit.street();
     const vc = createToonMaterial(0xffffff, { vertexColors: true });
     const plain = createToonMaterial(0xffffff);
     const specs = Object.entries(kit.props).map(([key, s]) => ({
       key,
       geo: s.geometry(),
-      mat: s.material === 'vc' ? vc : s.material === 'plain' ? plain : createToonMaterial(s.material),
+      mat: s.material === 'vc' ? vc : s.material === 'plain' ? plain : typeof s.material === 'function' ? s.material() : createToonMaterial(s.material),
       capacity: s.capacity,
       tinted: s.material === 'plain',
     }));
@@ -53,7 +59,7 @@ export class Track {
       this.root.add(group);
       this.chunks.push({ group, index: -1, props });
     }
-    this.ctx = { rng: this.rng, length: L, index: 0, put: this.put };
+    this.ctx = { rng: this.rng, length: L, index: 0, district: 0, put: this.put };
     this.reset();
   }
 
@@ -92,6 +98,7 @@ export class Track {
     this.rng.reseed((T.seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0);
     for (const k of c.props.keys()) this.counts.set(k, 0);
     this.ctx.index = index;
+    this.ctx.district = (Math.floor(Math.max(0, index * L) / ZONE.lengthM) + this.districtOffset) % this.districts;
     this.kit.layout(this.ctx);
     for (const [k, m] of c.props) {
       m.count = this.counts.get(k) ?? 0;

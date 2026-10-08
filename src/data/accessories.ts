@@ -28,6 +28,12 @@ export const ACCESSORIES: Record<string, AccessoryDef> = {
   bowTie: { name: 'Bow Tie', slot: 'neck', coins: 1100, colors: [0x2a201c] },
   goldChain: { name: 'Gold Chain', slot: 'neck', source: 'secret', colors: [0xf2c14e] },
   backpack: { name: 'Mini Backpack', slot: 'back', coins: 1800, colors: [0x6fb38a, 0x3f6f8a] },
+  // City outfit pieces (Tokyo Street, Tbilisoba).
+  hoodie: { name: 'Oversized Hoodie', slot: 'back', coins: 2200, colors: [0xa9b8c8, 0x2a201c] },
+  headphones: { name: 'Tiny Headphones', slot: 'neck', source: 'set', colors: [0xf2f2f2, 0xe85d8a] },
+  svanHat: { name: 'Felt Svan Hat', slot: 'head', coins: 1600, colors: [0xd8c8a8, 0x6b4a35] },
+  chokha: { name: 'Tiny Chokha', slot: 'back', coins: 2400, colors: [0x2a2a3a, 0xc9a24e] },
+  hornCharm: { name: 'Horn Cup Charm', slot: 'neck', source: 'set', colors: [0xc8a46e, 0xc9a24e] },
   cape: { name: 'Cape', slot: 'back', fishBones: 6, colors: [0xa45fd6, 0xf2c14e] },
   angelWings: { name: 'Angel Wings', slot: 'back', source: 'secret', colors: [0xfbfbf6] },
   jetpack: { name: 'Jetpack', slot: 'back', source: 'pass', colors: [0xa9b2bc, 0xd9483b] },

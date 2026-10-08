@@ -19,5 +19,9 @@ export const SFX = {
   /** Coin pings climb this pentatonic ladder with the streak. */
   coinScale: ['C6', 'D6', 'E6', 'G6', 'A6', 'C7', 'D7', 'E7', 'G7', 'A7'],
   coinStreakStep: 2,
-  volumes: { coin: -14, mrrp: -12, hiss: -10, bark: -8, whoosh: -14, pop: -10, register: -10, thud: -10, crash: -6, stamp: -12, tick: -22, chatter: -14 },
+  volumes: { coin: -14, mrrp: -12, hiss: -10, bark: -8, whoosh: -14, pop: -10, register: -10, thud: -10, crash: -6, stamp: -12, tick: -22, chatter: -14,
+    chime: -16, bell: -14, caw: -14, horn: -14, steam: -18, rumble: -12, toast: -12,
+    crossingChime: -22, crowCaw: -20, trainChime: -20, crowd: -26, river: -26, churchBells: -22, cableHum: -24 },
+  /** Ambient city sounds: one every this many seconds during runs. */
+  ambienceEvery: [5, 11] as const,
 } as const;

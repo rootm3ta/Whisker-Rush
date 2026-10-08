@@ -12,6 +12,8 @@ export interface GameEvents {
   fastDrop: number;
   /** Payload: new zone index. */
   zoneChange: number;
+  /** Payload: index into WARN_SOUNDS (a hazard ahead announced itself). */
+  hazardWarn: number;
   /** Payload: chain index (1..3). */
   wallKick: number;
   grindStart: number;

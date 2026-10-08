@@ -141,3 +141,11 @@ One line per judgment call.
 - S4: No kitten exists in the roster; a `KITTEN_MORPH` preset is ready for one. Professor Mittens gets fluffier cheeks, Sushi is slimmer.
 - S4: New breeds (Shiba "Kenta", Akita "Haru", Georgian Shepherd "Gela", ear-tagged street dog "Lali") live in `BREEDS` in data/dogs.ts for S5/S6.
 - S4: Bodies polygonise in about 0.2 to 0.4 s per new skin or breed and are cached; rebuilds with the same skin are instant.
+- S5: Districts are now real: `CityDef.districts` gives each 1000 m zone its own palette (sky, fog, light, road), night music, road bend and ambient particles; kits get `ctx.district` to lay out different props; patterns can be limited to districts. `?district=N` starts runs in a district for testing.
+- S5: New generic hazard behaviours: `rolls` (moves along the track: robots, trains, barrels), `warn` (one-shot warning sound: crossing chime, railway bell, crow caw, horn, steam, rumble) and `sideX` (off-road side track, never mirrored). Crows reuse `drops` with an overhead body (slide under).
+- S5: City extras are data: hunt words, ambience, alley theme name and colour, a power-up variant, an outfit set bonus, a loading card SVG and a postcard comic SVG. City collection sets add a bonus only in their city.
+- S5: Signage uses tiny Google Fonts subsets (`text=` with only the glyphs used) of Noto Sans JP and Noto Sans Georgian (OFL), drawn into one atlas texture per city and redrawn when the font loads.
+- S5: Tokyo unlocks at 6000 m best, 45,000 coins or 80 Fish Bones (Paris and Berlin are not built, so the chain skips them). Shitamachi's right side is a railway embankment so the side-track train never clips houses.
+- S5: Tokyo pups: the Akita lunges (and shoves 1.5x further), the Shiba runs the Pack Rush with side-step feints. Bento Box = Yarn Magnet plus 3 loot items dropped ahead. Cat Door opens into the "Cat Cafe".
+- S5: Shop and neon names are invented Japanese words (ramen, karaoke, kissa, izakaya, books...), no brands; the lattice tower is generic, not a landmark replica.
+- S5: Postcard fragments count per city when a run ends; the 5th unlocks the city's comic panel (the fragment still sells).

@@ -9,6 +9,8 @@ export const HAZARDS = {
     minAhead: 14,
     laneRate: 4,
   },
+  /** Warning sounds fire this many seconds before the cat reaches the hazard. */
+  warnSec: 2.2,
   drop: {
     /** Laundry falls when the cat is this many seconds away. */
     triggerSec: 0.9,

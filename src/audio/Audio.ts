@@ -3,6 +3,8 @@ import type { GameEvents } from '../core/events';
 import type { MusicMode, SfxId, ToneAudio } from './ToneAudio';
 import type { MusicTheme } from '../data/cities';
 import { audioLockState, installAudioUnlock, onAudioUnlocked, resumeAudio } from './unlock';
+import { WARN_SOUNDS } from '../data/obstacles';
+import { SFX } from '../data/audio';
 
 /** What Settings shows: not yet tapped, sound running, or switched off by the player. */
 export type AudioStatus = 'locked' | 'loading' | 'playing' | 'muted' | 'paused';
@@ -21,6 +23,21 @@ export class Audio {
   private sfxOn = true;
   private streak = 0;
   private lastCoin = 0;
+  private ambience: readonly SfxId[] = [];
+  private ambienceIn = 6;
+
+  /** City ambience ids, played now and then during runs. */
+  setAmbience(ids: readonly SfxId[] | undefined): void {
+    this.ambience = ids ?? [];
+  }
+
+  private readonly ambienceTick = (): void => {
+    if (this.mode !== 'run' || !this.ambience.length) return;
+    if (--this.ambienceIn > 0) return;
+    const [a, b] = SFX.ambienceEvery;
+    this.ambienceIn = a + Math.floor(Math.random() * (b - a));
+    this.play(this.ambience[Math.floor(Math.random() * this.ambience.length)]);
+  };
 
   constructor(bus: EventBus<GameEvents>) {
     installAudioUnlock();
@@ -48,6 +65,8 @@ export class Audio {
     bus.on('stunt', () => this.play('stamp'));
     bus.on('loot', () => this.play('pop'));
     bus.on('chest', () => this.play('register'));
+    bus.on('hazardWarn', (i) => this.play(WARN_SOUNDS[i]));
+    window.setInterval(this.ambienceTick, 1000);
   }
 
   private load(ctx: AudioContext): void {
@@ -87,6 +106,11 @@ export class Audio {
   setTheme(theme: MusicTheme): void {
     this.theme = theme;
     this.tone?.music.setTheme(theme);
+  }
+
+  /** Night district on/off (swaps the pad where the city has a night variant). */
+  setNight(on: boolean): void {
+    this.tone?.music.setNight(on);
   }
 
   setStems(speed: number, powerUp: boolean, catnip: boolean): void {
