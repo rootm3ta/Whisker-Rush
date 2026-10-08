@@ -38,6 +38,16 @@ class MusicDirector {
   private readonly bass = new Tone.MonoSynth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.2 }, filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, baseFrequency: 200, octaves: 2 } });
   private readonly square = new Tone.Synth({ oscillator: { type: 'square8' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0.2, release: 0.25 } });
   private readonly mandolin = new Tone.PluckSynth({ attackNoise: 1.2, dampening: 4200, resonance: 0.93 });
+  /** Home lo-fi layer: its own bus so it can crossfade against the run stems. */
+  private readonly homeBus = new Tone.Volume(-60);
+  private readonly softKick = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 3, envelope: { attack: 0.002, decay: 0.35, sustain: 0 } });
+  private readonly rim = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.001, decay: 0.06, sustain: 0 } });
+  private readonly rimFilter = new Tone.Filter(1800, 'bandpass');
+  private readonly crackle = new Tone.Noise('brown');
+  private readonly crackleFilter = new Tone.Filter(2500, 'highpass');
+  private readonly crackleVol = new Tone.Volume(-60);
+  /** Home layer keeps playing until the crossfade into the run has finished. */
+  private homeUntil = 0;
   private theme: MusicTheme | null = null;
   private chordsList: string[][] = [];
   private chordTops: string[][] = [];
@@ -60,6 +70,13 @@ class MusicDirector {
     this.bass.connect(this.vol.bass);
     this.square.connect(this.vol.lead);
     this.mandolin.connect(this.vol.lead);
+    this.homeBus.connect(this.master);
+    this.softKick.connect(this.homeBus);
+    this.rim.connect(this.rimFilter);
+    this.rimFilter.connect(this.homeBus);
+    this.crackle.connect(this.crackleFilter);
+    this.crackleFilter.connect(this.crackleVol);
+    this.crackleVol.connect(this.master);
     this.loop = new Tone.Loop((time) => this.tick(time), '16n');
   }
 
@@ -72,10 +89,20 @@ class MusicDirector {
     const rng = new Rng(theme.seed);
     this.melody = [];
     for (let i = 0; i < 64; i++) this.melody.push(i % 2 === 0 && rng.next() < 0.6 ? rng.pick(theme.leadScale) : null);
+    this.applyGroove();
+    if (this.mode !== 'off') Tone.getTransport().bpm.rampTo(this.mode === 'home' ? theme.homeBpm : theme.bpm, 0.5);
+  }
+
+  /** Lazy 16th swing at home, the city's own groove in runs. */
+  private applyGroove(): void {
     const t = Tone.getTransport();
-    t.swing = theme.swing;
-    t.swingSubdivision = '8n';
-    if (this.mode !== 'off') t.bpm.rampTo(this.mode === 'home' ? theme.homeBpm : theme.bpm, 0.5);
+    if (this.mode === 'home') {
+      t.swing = MUSIC.home.swing;
+      t.swingSubdivision = '16n';
+    } else if (this.theme) {
+      t.swing = this.theme.swing;
+      t.swingSubdivision = '8n';
+    }
   }
 
   private tick(time: number): void {
@@ -93,9 +120,13 @@ class MusicDirector {
       if (beat === 0) pad.triggerAttackRelease(this.chordsList[bar], '1m', time, 0.5);
       if (beat === 10) pad.triggerAttackRelease(this.chordTops[bar], '8n', time, 0.25);
     }
-    if (this.mode === 'home') {
-      if (beat % 4 === 2) this.hat.triggerAttackRelease('32n', time, 0.25);
-      return;
+    if (this.mode === 'home' || time < this.homeUntil) {
+      // Lo-fi: soft kick on 1 and the "and" of 3, rim on 2 and 4, a ghost rim before the bar.
+      if (beat === 0 || beat === 10) this.softKick.triggerAttackRelease('A1', '8n', time, 0.55);
+      if (beat === 4 || beat === 12) this.rim.triggerAttackRelease('32n', time, 0.5);
+      if (beat === 15) this.rim.triggerAttackRelease('32n', time, 0.18);
+      if (beat === 0 && th.bass[bar]) this.bass.triggerAttackRelease(th.bass[bar], '2n', time, 0.35);
+      if (this.mode === 'home') return;
     }
     if (swing) {
       if (beat === 0 || beat === 8) this.kick.triggerAttackRelease('C1', '8n', time, 0.7);
@@ -121,20 +152,37 @@ class MusicDirector {
 
   setMode(mode: MusicMode): void {
     if (mode === this.mode) return;
+    const prev = this.mode;
     this.mode = mode;
     const t = Tone.getTransport();
+    const H = MUSIC.home;
     if (mode === 'off') {
       this.master.volume.rampTo(-60, 0.4);
+      this.crackleVol.volume.rampTo(-60, 0.4);
       return;
     }
+    // Home to run crossfades (tempo, filter, lo-fi layer out, stems in); anything else is a quick fade.
+    const xfade = prev === 'home' && mode === 'run' ? H.xfadeSec : 0.5;
     const th = this.theme;
-    if (th) t.bpm.rampTo(mode === 'home' ? th.homeBpm : th.bpm, 0.5);
+    if (th) t.bpm.rampTo(mode === 'home' ? th.homeBpm : th.bpm, xfade);
+    this.applyGroove();
     this.master.volume.rampTo(MUSIC.volumes.master, 0.4);
     if (t.state !== 'started') {
       this.loop.start(0);
       t.start();
     }
-    if (mode === 'home') this.setStems(0, false, false);
+    if (this.crackle.state !== 'started') this.crackle.start();
+    if (mode === 'home') {
+      this.homeUntil = 0;
+      this.homeBus.volume.rampTo(H.layer, 0.6);
+      this.crackleVol.volume.rampTo(H.crackle, 0.6);
+      this.setStems(0, false, false);
+    } else {
+      this.homeUntil = Tone.now() + xfade;
+      this.homeBus.volume.rampTo(-60, xfade);
+      this.crackleVol.volume.rampTo(-60, xfade);
+      this.filter.frequency.rampTo(MUSIC.filter.open, xfade);
+    }
   }
 
   /** Stems build with speed (drums > bass > lead). */
@@ -145,7 +193,7 @@ class MusicDirector {
     this.vol.drums.volume.rampTo(run && speed >= S.drums ? MUSIC.volumes.drums : -60, f);
     this.vol.bass.volume.rampTo(run && speed >= S.bass ? MUSIC.volumes.bass : -60, f);
     this.vol.lead.volume.rampTo(run && speed >= S.lead ? MUSIC.volumes.lead : -60, f);
-    this.filter.frequency.rampTo(powerUp ? MUSIC.filter.powerUp : MUSIC.filter.open, 0.4);
+    this.filter.frequency.rampTo(!run ? MUSIC.home.filter : powerUp ? MUSIC.filter.powerUp : MUSIC.filter.open, run ? 0.4 : 0.6);
     const cents = catnip ? MUSIC.catnipDetune : 0;
     this.piano.set({ detune: cents });
     this.accordion.set({ detune: cents });
@@ -263,7 +311,9 @@ export interface ToneAudio {
   sfx: SfxBank;
 }
 
-export async function startToneAudio(): Promise<ToneAudio> {
+/** Tone runs on the context unlock.ts already created and resumed inside the user's tap. */
+export async function startToneAudio(ctx: AudioContext): Promise<ToneAudio> {
+  Tone.setContext(ctx, true);
   await Tone.start();
   Tone.getContext().lookAhead = 0.05;
   return { music: new MusicDirector(), sfx: new SfxBank() };

@@ -2,10 +2,14 @@ import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import type { MusicMode, SfxId, ToneAudio } from './ToneAudio';
 import type { MusicTheme } from '../data/cities';
+import { audioLockState, installAudioUnlock, onAudioUnlocked, resumeAudio } from './unlock';
+
+/** What Settings shows: not yet tapped, sound running, or switched off by the player. */
+export type AudioStatus = 'locked' | 'loading' | 'playing' | 'muted' | 'paused';
 
 /**
- * Audio front door. Tone.js loads lazily on the first user gesture (browsers require it),
- * so the game boots fast; until then every call is a no-op. Gameplay never calls this:
+ * Audio front door. The AudioContext is unlocked synchronously in the first tap (see unlock.ts),
+ * then Tone.js loads lazily onto that context, so the game boots fast; until then every call is a no-op. Gameplay never calls this:
  * it subscribes to the event bus.
  */
 export class Audio {
@@ -19,9 +23,8 @@ export class Audio {
   private lastCoin = 0;
 
   constructor(bus: EventBus<GameEvents>) {
-    const unlock = () => this.unlock();
-    window.addEventListener('pointerdown', unlock, { once: false, passive: true });
-    window.addEventListener('keydown', unlock);
+    installAudioUnlock();
+    onAudioUnlocked((ctx) => this.load(ctx));
     bus.on('coin', () => {
       const now = performance.now();
       this.streak = now - this.lastCoin < 600 ? this.streak + 1 : 0;
@@ -47,11 +50,11 @@ export class Audio {
     bus.on('chest', () => this.play('register'));
   }
 
-  private unlock(): void {
+  private load(ctx: AudioContext): void {
     if (this.tone || this.loading) return;
     this.loading = true;
     void import('./ToneAudio')
-      .then((m) => m.startToneAudio())
+      .then((m) => m.startToneAudio(ctx))
       .then((t) => {
         this.tone = t;
         t.sfx.setEnabled(this.sfxOn);
@@ -88,6 +91,20 @@ export class Audio {
 
   setStems(speed: number, powerUp: boolean, catnip: boolean): void {
     this.tone?.music.setStems(speed, powerUp, catnip);
+  }
+
+  status(): AudioStatus {
+    const lock = audioLockState();
+    if (lock === 'locked') return 'locked';
+    if (!this.tone) return 'loading';
+    if (!this.musicOn && !this.sfxOn) return 'muted';
+    return lock === 'running' ? 'playing' : 'paused';
+  }
+
+  /** Settings "Test sound": runs inside the button's click, so it can also unlock or resume. */
+  test(): void {
+    resumeAudio();
+    this.tone?.sfx.play('register', 0);
   }
 
   play(id: SfxId, n = 0): void {

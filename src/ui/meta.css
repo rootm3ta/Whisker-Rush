@@ -338,6 +338,35 @@
 .wr-toggle.on::after {
   left: 26px;
 }
+.wr-wave {
+  width: 28px;
+  height: 20px;
+  margin-right: 10px;
+  flex: none;
+  fill: #2a201c;
+  opacity: 0.35;
+}
+.wr-wave rect {
+  transform-origin: center;
+  transform-box: fill-box;
+  transform: scaleY(0.3);
+}
+.wr-audio[data-s='playing'] .wr-wave {
+  fill: #3f8a5a;
+  opacity: 1;
+}
+.wr-audio[data-s='playing'] .wr-wave rect {
+  animation: wr-wave 0.7s ease-in-out infinite alternate;
+}
+.wr-audio[data-s='muted'] .wr-wave {
+  fill: #b5523b;
+  opacity: 0.8;
+}
+@keyframes wr-wave {
+  to {
+    transform: scaleY(1);
+  }
+}
 @keyframes wr-sheet-up {
   from {
     transform: translateY(100%);

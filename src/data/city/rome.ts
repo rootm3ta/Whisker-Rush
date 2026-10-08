@@ -145,7 +145,7 @@ export const ROME: CityDef = {
   boss: { vehicle: 'deliveryScooter', throwIds: ['pizzaBoxes', 'crates', 'pizzaBoxes', 'cafeTable'], riderY: 0.75, riderZ: -0.55 },
   music: {
     bpm: 116,
-    homeBpm: 96,
+    homeBpm: 90,
     chords: [
       ['A3', 'C4', 'E4'],
       ['D4', 'F4', 'A4'],

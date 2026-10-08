@@ -244,6 +244,7 @@ export class Game {
           this.fsm.go('boot');
         },
         () => this.playIntro(true),
+        this.audio,
       ),
     };
     this.comic = new Comic(host);

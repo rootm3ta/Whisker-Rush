@@ -8,6 +8,11 @@ export const MUSIC = {
   /** Catnip pitches the whole mix up (cents). */
   catnipDetune: 200,
   fadeSec: 1.2,
+  /**
+   * Home: a lo-fi take on the city theme at the city's homeBpm (85 to 95): chords through a warm
+   * lowpass, lazy 16th swing, soft kick and rim, vinyl crackle. Crossfades into the run theme.
+   */
+  home: { filter: 1500, swing: 0.28, layer: -9, crackle: -40, xfadeSec: 1.6 },
 } as const;
 
 export const SFX = {

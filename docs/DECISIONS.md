@@ -111,3 +111,8 @@ One line per judgment call.
 - M9: No Ads turns every rewarded placement into a free reward (still capped per day), as GAME_DESIGN 11.2 suggests.
 - M9: Interstitials: never in the first 4 sessions, every 3rd run at most, 180 s gap, never after a new best. Crates are never sold for money; odds are shown on a dedicated screen.
 - M9: Ad Zoomies head start offered on the boost bar (2/day); secret stock refresh by ad shifts the seeded stock instead of rerolling the whole shop.
+- S1: iOS audio root cause: Tone.start() ran after an async import, outside the tap, and the unlock listened to pointerdown. Now `src/audio/unlock.ts` creates and resumes a raw AudioContext synchronously in the first touchend/click/keydown, and Tone adopts it via setContext.
+- S1: Ringer switch: `navigator.audioSession.type = 'playback'` where supported, plus a looping silent WAV (built in code as a Blob URL, 8 kB) started in the same tap. WAV instead of base64 MP3: no binary blob in the source, same effect.
+- S1: Unlock listeners use the capture phase (the comic stops propagation) and stay bound after unlock as a cheap "resume if iOS suspended us" hook, instead of being removed.
+- S1: Context suspends and the silent loop pauses when the page is hidden, so nothing plays in the background or shows on the lock screen.
+- S1: Home music is a lo-fi version of the city theme: homeBpm (Maple 92, Rome lowered to 90), 16th swing, warm lowpass, soft kick and rim, vinyl crackle; crossfades into the run theme over 1.6 s.
