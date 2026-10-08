@@ -42,6 +42,7 @@ export class SettingsScreen {
       const k = t.dataset.k as keyof typeof s;
       s[k] = !s[k];
       this.ctx.save.write();
+      this.ctx.refresh();
     } else if (t.dataset.act === 'replay') {
       this.sheet.close();
       this.onReplay();

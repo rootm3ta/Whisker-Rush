@@ -49,6 +49,12 @@ export class PowerUps {
     return id === 'bubble' ? this.bubble : this.left[IDX[id]] > 0;
   }
 
+  /** Any timed power-up running (allocation-free check for music and HUD). */
+  get anyActive(): boolean {
+    for (let i = 0; i < this.left.length; i++) if (this.left[i] > 0) return true;
+    return this.bubble;
+  }
+
   get riding(): boolean {
     return this.roombaLeft > 0;
   }
@@ -154,14 +160,16 @@ export class PowerUps {
   private pull(dt: number, r: Runner, field: Field): void {
     const k = 1 - Math.exp(-FX.magnetPull * dt);
     const ty = r.y + 0.5;
-    for (const c of field.coins) {
+    for (let i_c = 0; i_c < field.coins.length; i_c++) {
+      const c = field.coins[i_c];
       if (!c.active || c.s < r.distance - 1 || c.s > r.distance + FX.magnetAhead) continue;
       if (Math.abs(c.x - r.x) > FX.magnetRadius) continue;
       c.x += (r.x - c.x) * k;
       c.y += (ty - c.y) * k;
       c.s += (r.distance - c.s) * k;
     }
-    for (const p of field.pickups) {
+    for (let i_p = 0; i_p < field.pickups.length; i_p++) {
+      const p = field.pickups[i_p];
       if (!p.active || p.blocked || p.kind !== PickupKind.Loot) continue;
       if (p.s < r.distance - 1 || p.s > r.distance + FX.magnetAhead) continue;
       p.x += (r.x - p.x) * k;

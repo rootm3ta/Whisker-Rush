@@ -6,12 +6,16 @@ export const ICON = {
   gear: `<svg viewBox="0 0 24 24" class="wr-ico"><circle cx="12" cy="12" r="3.4" fill="none" stroke="#2a201c" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1" stroke="#2a201c" stroke-width="2.2" stroke-linecap="round"/></svg>`,
   close: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M6 6.5l11.5 11M17.5 6L6.2 17.8" stroke="#2a201c" stroke-width="2.6" stroke-linecap="round"/></svg>`,
   paw: `<svg viewBox="0 0 24 24" class="wr-paw-ico"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6" cy="10" r="2.2"/><circle cx="9.6" cy="6.4" r="2.2"/><circle cx="14.4" cy="6.4" r="2.2"/><circle cx="18" cy="10" r="2.2"/></svg>`,
+  bag: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M5.2 9.1c-.4 4.3-.2 8.6.6 11.2 3.9 1 8.4 1 12.4 0 .8-2.7 1-6.9.6-11.2-4.6-.9-9-.9-13.6 0z" fill="#c8915a" stroke="#2a201c" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 9c.1-3 1.4-5 3.4-5s3.3 2 3.4 5" fill="none" stroke="#2a201c" stroke-width="2" stroke-linecap="round"/></svg>`,
   lock: `<svg viewBox="0 0 24 24" class="wr-ico"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="#d8ccb6" stroke="#2a201c" stroke-width="2"/><path d="M8 10.5V8a4 4 0 018 0v2.5" fill="none" stroke="#2a201c" stroke-width="2"/></svg>`,
 } as const;
 
 export function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
+
+/** Number of sheets and popups currently open (checked every frame without DOM queries). */
+export const overlays = { open: 0 };
 
 /** Sketchbook bottom sheet used by every meta screen. Clicks inside never reach the game canvas. */
 export class Sheet {
@@ -45,12 +49,15 @@ export class Sheet {
   }
 
   open(): void {
+    if (!this.el.hidden) return;
     this.el.hidden = false;
+    overlays.open++;
   }
 
   close(): void {
     if (this.el.hidden) return;
     this.el.hidden = true;
+    overlays.open--;
     this.onClose?.();
   }
 }
@@ -61,7 +68,11 @@ export function popup(host: HTMLElement, title: string, lines: readonly string[]
   el.className = 'wr-popup';
   el.innerHTML = `<div class="wr-popup-card"><h3>${esc(title)}</h3>${lines.map((l) => `<p>${esc(l)}</p>`).join('')}<button class="wr-btn wr-btn-main">Nice!</button></div>`;
   for (const ev of ['pointerdown', 'pointerup', 'click'] as const) el.addEventListener(ev, (e) => e.stopPropagation());
-  el.querySelector('button')!.addEventListener('click', () => el.remove());
+  overlays.open++;
+  el.querySelector('button')!.addEventListener('click', () => {
+    el.remove();
+    overlays.open--;
+  });
   host.appendChild(el);
 }
 

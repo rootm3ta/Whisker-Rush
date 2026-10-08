@@ -31,6 +31,9 @@ export class GameOver {
   private readonly root: HTMLDivElement;
   private readonly el: Record<string, HTMLElement> = {};
   private toastTimer = 0;
+  private countRaf = 0;
+  /** Called on each count-up tick (sound). */
+  onTick: (() => void) | null = null;
 
   constructor(host: HTMLElement, private readonly actions: GameOverActions) {
     const root = document.createElement('div');
@@ -75,7 +78,7 @@ export class GameOver {
   show(d: GameOverData): void {
     const e = this.el;
     e.title.textContent = d.caught ? T.caught : T.crash;
-    e['score-v'].textContent = String(Math.floor(d.score));
+    this.countUp(e['score-v'], Math.floor(d.score));
     e['best-stamp'].hidden = !d.newBest;
     e.dist.textContent = `${Math.floor(d.distance)} m`;
     e.best.textContent = String(Math.floor(d.best));
@@ -110,6 +113,26 @@ export class GameOver {
 
   hide(): void {
     this.root.hidden = true;
+    cancelAnimationFrame(this.countRaf);
+  }
+
+  /** Numbers count up with ticks instead of appearing. */
+  private countUp(el: HTMLElement, target: number): void {
+    cancelAnimationFrame(this.countRaf);
+    const t0 = performance.now();
+    const dur = Math.min(1400, 400 + target / 4);
+    let lastTick = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      el.textContent = String(Math.round(target * e));
+      if (now - lastTick > 70 && k < 1) {
+        lastTick = now;
+        this.onTick?.();
+      }
+      if (k < 1) this.countRaf = requestAnimationFrame(step);
+    };
+    this.countRaf = requestAnimationFrame(step);
   }
 
   toast(text: string): void {

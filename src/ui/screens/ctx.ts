@@ -12,4 +12,6 @@ export interface MetaCtx {
   reward(title: string, lines: readonly string[]): void;
   /** Stat updates from outside a run (selling) feed missions and challenges. */
   addStats(stats: Record<string, number>): void;
+  /** Plays a UI sound (cash register on sales). */
+  sound(id: 'register' | 'pop' | 'stamp'): void;
 }

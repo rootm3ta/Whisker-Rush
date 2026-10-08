@@ -19,6 +19,7 @@ export class HomeHud {
   private readonly bubble: HTMLElement;
   private readonly labels = new Map<HomeAction, HTMLElement>();
   private bubbleT = 0;
+  private readonly labelShown = new Map<HomeAction, number>();
 
   constructor(host: HTMLElement, actions: HomeHudActions) {
     const root = document.createElement('div');
@@ -99,6 +100,9 @@ export class HomeHud {
   }
 
   placeLabel(action: HomeAction, x: number, y: number, visible: boolean): void {
+    const key = (Math.round(x) * 4096 + Math.round(y)) * 2 + (visible ? 1 : 0);
+    if (this.labelShown.get(action) === key) return;
+    this.labelShown.set(action, key);
     const el = this.labels.get(action)!;
     el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%) rotate(${action.length % 2 ? -3 : 3}deg)`;
     el.style.opacity = visible ? '1' : '0';

@@ -18,6 +18,17 @@ export const RENDER = {
   sunPos: [-6, 12, 4] as const,
 } as const;
 
+/** Auto quality tier from the average frame time of the first frames (ms). */
+export const QUALITY = {
+  sampleFrames: 120,
+  /** Skip the first frames (shader compile hitches). */
+  warmupFrames: 20,
+  lowAboveMs: 24,
+  mediumAboveMs: 18,
+  bloom: { threshold: 0.82, smoothing: 0.25, intensity: 0.55, radius: 0.6 },
+  vignette: { offset: 0.32, darkness: 0.42 },
+} as const;
+
 export const SIM = {
   hz: 60,
   /** Clamp to avoid spiral of death after tab switches. */

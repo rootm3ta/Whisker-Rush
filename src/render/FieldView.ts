@@ -53,7 +53,8 @@ export class FieldView {
 
   constructor() {
     const vc = createToonMaterial(0xffffff, { vertexColors: true });
-    for (const id of OBSTACLE_IDS) {
+    for (let i_id = 0; i_id < OBSTACLE_IDS.length; i_id++) {
+      const id = OBSTACLE_IDS[i_id];
       const mesh = this.instanced(OBSTACLE_GEOMETRY[id](), vc, OBSTACLES[id].capacity);
       if (id === 'car') mesh.setColorAt(0, this.col.setHex(0xffffff));
       this.obstacles[id] = mesh;
@@ -111,9 +112,10 @@ export class FieldView {
   /** `distance` is the interpolated cat distance; world z = distance - s. */
   update(field: Field, distance: number, dt: number): void {
     this.time += dt;
-    for (const id of OBSTACLE_IDS) this.counts[id] = 0;
+    for (let i_id = 0; i_id < OBSTACLE_IDS.length; i_id++) { const id = OBSTACLE_IDS[i_id]; this.counts[id] = 0; }
     let poles = 0;
-    for (const o of field.obstacles) {
+    for (let i_o = 0; i_o < field.obstacles.length; i_o++) {
+      const o = field.obstacles[i_o];
       if (!o.active) continue;
       const mesh = this.obstacles[o.id];
       const i = this.counts[o.id]++;
@@ -135,13 +137,14 @@ export class FieldView {
         this.poles.setMatrixAt(poles++, this.m);
       }
     }
-    for (const id of OBSTACLE_IDS) this.finish(this.obstacles[id], this.counts[id]);
+    for (let i_id = 0; i_id < OBSTACLE_IDS.length; i_id++) { const id = OBSTACLE_IDS[i_id]; this.finish(this.obstacles[id], this.counts[id]); }
     this.finish(this.poles, poles);
 
     const spin = this.time * COIN.spinPerSec;
     const gold = this.goldBoost ? 1.25 + 0.1 * Math.sin(this.time * 18) : 1;
     let n = 0;
-    for (const c of field.coins) {
+    for (let i_c = 0; i_c < field.coins.length; i_c++) {
+      const c = field.coins[i_c];
       if (!c.active) continue;
       this.set(c.x, c.y, distance - c.s, spin, 0, gold, gold);
       this.coins.setMatrixAt(n, this.m);
@@ -158,7 +161,8 @@ export class FieldView {
     let nc = 0;
     let letterShown = false;
     const bob = Math.sin(this.time * 3) * 0.08;
-    for (const p of field.pickups) {
+    for (let i_p = 0; i_p < field.pickups.length; i_p++) {
+      const p = field.pickups[i_p];
       if (!p.active) continue;
       const z = distance - p.s;
       switch (p.kind) {

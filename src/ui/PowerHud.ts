@@ -33,6 +33,7 @@ export class PowerHud {
   private shownCharge = -1;
   private shownBanner = '';
   private boostLeft = 0;
+  private readonly barShown = new Int16Array(POWERUP_IDS.length + 1).fill(-1);
 
   constructor(host: HTMLElement, actions: PowerHudActions) {
     const root = document.createElement('div');
@@ -128,17 +129,25 @@ export class PowerHud {
     this.root.classList.toggle('wr-fast', on);
   }
 
+  /** Writes a bar only when it moves by 1%, so steady frames allocate nothing. */
+  private setBar(i: number, el: HTMLElement, v: number): void {
+    const q = Math.round(v * 100);
+    if (q === this.barShown[i]) return;
+    this.barShown[i] = q;
+    el.style.transform = `scaleX(${q / 100})`;
+  }
+
   update(pu: PowerUps, charge: number, dt: number): void {
     for (let i = 0; i < POWERUP_IDS.length; i++) {
       const id = POWERUP_IDS[i];
       const on = pu.isOn(id);
       const tag = this.tags[i];
       if (tag.hidden === on) tag.hidden = !on;
-      if (on) this.bars[i].style.transform = id === 'bubble' ? 'scaleX(1)' : `scaleX(${pu.left[i] / (pu.full[i] || 1)})`;
+      if (on) this.setBar(i, this.bars[i], id === 'bubble' ? 1 : pu.left[i] / (pu.full[i] || 1));
     }
     const riding = pu.riding;
     if (this.roombaTag.hidden === riding) this.roombaTag.hidden = !riding;
-    if (riding) this.roombaBar.style.transform = `scaleX(${pu.roombaLeft / ROOMBA.duration})`;
+    if (riding) this.setBar(POWERUP_IDS.length, this.roombaBar, pu.roombaLeft / ROOMBA.duration);
 
     const c = Math.round(charge * 100);
     if (c !== this.shownCharge) {

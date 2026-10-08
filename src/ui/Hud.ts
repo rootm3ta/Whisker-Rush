@@ -21,6 +21,11 @@ export class Hud {
   private shown = { score: -1, coins: -1, satchel: -1, cap: -1, combo: -1 };
   private stampTimer = 0;
   private tauntTimer = 0;
+  /** Displayed values count up toward the real ones. */
+  private shownPoints = 0;
+  private shownCoins = 0;
+  readonly coinsTarget: HTMLElement;
+  readonly satchelTarget: HTMLElement;
   private readonly rushEl: HTMLElement;
   private readonly tauntEl: HTMLElement;
 
@@ -45,6 +50,8 @@ export class Hud {
     this.comboFill = root.querySelector('.wr-combo-fill')!;
     this.comboWrap = root.querySelector('.wr-combo')!;
     this.stampEl = root.querySelector('.wr-stamp')!;
+    this.coinsTarget = root.querySelector('.wr-coins')!;
+    this.satchelTarget = root.querySelector('.wr-satchel')!;
     this.rushEl = root.querySelector('.wr-rush')!;
     this.tauntEl = root.querySelector('.wr-taunt')!;
   }
@@ -66,14 +73,21 @@ export class Hud {
 
   update(score: Score, satchel: Satchel, dtMs: number): void {
     const sh = this.shown;
-    const pts = Math.floor(score.points);
+    const k = Math.min(1, dtMs / 90);
+    this.shownPoints += (score.points - this.shownPoints) * k;
+    this.shownCoins += (score.coins - this.shownCoins) * Math.min(1, dtMs / 60);
+    const pts = Math.round(this.shownPoints);
     if (pts !== sh.score) {
       sh.score = pts;
       this.scoreEl.textContent = String(pts);
     }
-    if (score.coins !== sh.coins) {
-      sh.coins = score.coins;
-      this.coinsEl.textContent = String(score.coins);
+    const coins = Math.round(this.shownCoins);
+    if (coins !== sh.coins) {
+      sh.coins = coins;
+      this.coinsEl.textContent = String(coins);
+      this.coinsTarget.classList.remove('wr-bump');
+      void this.coinsTarget.offsetWidth;
+      this.coinsTarget.classList.add('wr-bump');
     }
     if (satchel.count !== sh.satchel || satchel.capacity !== sh.cap) {
       sh.satchel = satchel.count;
@@ -111,6 +125,8 @@ export class Hud {
 
   reset(): void {
     this.shown = { score: -1, coins: -1, satchel: -1, cap: -1, combo: -1 };
+    this.shownPoints = 0;
+    this.shownCoins = 0;
     this.stampTimer = 0;
     this.tauntTimer = 0;
     this.stampEl.classList.remove('wr-stamp-on');

@@ -52,13 +52,14 @@ export class Field implements RunnerWorld {
   lastGrind = false;
 
   reset(): void {
-    for (const o of this.obstacles) o.active = false;
-    for (const c of this.coins) c.active = false;
-    for (const p of this.pickups) p.active = false;
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) { const o = this.obstacles[i_o]; o.active = false; }
+    for (let i_c = 0; i_c < this.coins.length; i_c++) { const c = this.coins[i_c]; c.active = false; }
+    for (let i_p = 0; i_p < this.pickups.length; i_p++) { const p = this.pickups[i_p]; p.active = false; }
   }
 
   addObstacle(id: ObstacleId, x: number, s0: number, len: number, color: number): Obstacle | null {
-    for (const o of this.obstacles) {
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) {
+      const o = this.obstacles[i_o];
       if (o.active) continue;
       o.active = true;
       o.id = id;
@@ -78,13 +79,14 @@ export class Field implements RunnerWorld {
   }
 
   clearAll(s0: number): void {
-    for (const o of this.obstacles) if (o.active && o.s1 >= s0) o.active = false;
-    for (const c of this.coins) if (c.active && c.s >= s0) c.active = false;
-    for (const p of this.pickups) if (p.active && p.s >= s0) p.active = false;
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) { const o = this.obstacles[i_o]; if (o.active && o.s1 >= s0) o.active = false; }
+    for (let i_c = 0; i_c < this.coins.length; i_c++) { const c = this.coins[i_c]; if (c.active && c.s >= s0) c.active = false; }
+    for (let i_p = 0; i_p < this.pickups.length; i_p++) { const p = this.pickups[i_p]; if (p.active && p.s >= s0) p.active = false; }
   }
 
   addCoin(x: number, s: number, y: number): void {
-    for (const c of this.coins) {
+    for (let i_c = 0; i_c < this.coins.length; i_c++) {
+      const c = this.coins[i_c];
       if (c.active) continue;
       c.active = true;
       c.x = x;
@@ -95,7 +97,8 @@ export class Field implements RunnerWorld {
   }
 
   addPickup(kind: number, item: number, x: number, s: number, y: number): void {
-    for (const p of this.pickups) {
+    for (let i_p = 0; i_p < this.pickups.length; i_p++) {
+      const p = this.pickups[i_p];
       if (p.active) continue;
       p.active = true;
       p.kind = kind;
@@ -111,14 +114,14 @@ export class Field implements RunnerWorld {
   /** Free everything that is safely behind the cat. */
   despawn(distance: number, behind: number): void {
     const cut = distance - behind;
-    for (const o of this.obstacles) if (o.active && o.s1 < cut) o.active = false;
-    for (const c of this.coins) if (c.active && c.s < cut) c.active = false;
-    for (const p of this.pickups) if (p.active && p.s < cut) p.active = false;
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) { const o = this.obstacles[i_o]; if (o.active && o.s1 < cut) o.active = false; }
+    for (let i_c = 0; i_c < this.coins.length; i_c++) { const c = this.coins[i_c]; if (c.active && c.s < cut) c.active = false; }
+    for (let i_p = 0; i_p < this.pickups.length; i_p++) { const p = this.pickups[i_p]; if (p.active && p.s < cut) p.active = false; }
   }
 
   /** Removes obstacles overlapping [s0, s1] (revive clears the way). */
   clearObstacles(s0: number, s1: number): void {
-    for (const o of this.obstacles) if (o.active && o.s1 >= s0 && o.s0 <= s1) o.active = false;
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) { const o = this.obstacles[i_o]; if (o.active && o.s1 >= s0 && o.s0 <= s1) o.active = false; }
   }
 
   surfaceTop(o: Obstacle, s: number): number {
@@ -131,7 +134,8 @@ export class Field implements RunnerWorld {
   supportAt(x: number, s: number, y: number, tol: number, ignoreGrind: boolean): number {
     let best = 0;
     let grind = false;
-    for (const o of this.obstacles) {
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) {
+      const o = this.obstacles[i_o];
       if (!o.active || o.def.top === null || o.flight > 0) continue;
       if (Math.abs(x - o.x) > o.def.halfWidth || s < o.s0 || s > o.s1) continue;
       if (ignoreGrind && o.def.grind) continue;
@@ -146,7 +150,8 @@ export class Field implements RunnerWorld {
   }
 
   canWallKick(x: number, s: number, y: number): boolean {
-    for (const o of this.obstacles) {
+    for (let i_o = 0; i_o < this.obstacles.length; i_o++) {
+      const o = this.obstacles[i_o];
       if (!o.active || !o.def.kickable || o.def.top === null) continue;
       const dx = Math.abs(x - o.x);
       if (dx < WALL_KICK.minSide || dx > WALL_KICK.reach) continue;

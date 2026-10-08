@@ -47,6 +47,15 @@ import { canClaimTier, runStamps } from '../meta/Pass';
 import { loginState } from '../meta/Calendar';
 import { localDay } from '../meta/Time';
 import { Comic } from '../ui/Comic';
+import { Audio } from '../audio/Audio';
+import { WebHaptics } from '../platform/Haptics';
+import { JuiceFx } from '../render/JuiceFx';
+import { PostFx, QualityProbe } from '../render/PostFx';
+import { FlyFx } from '../ui/FlyFx';
+import { overlays } from '../ui/Sheet';
+import { HIT_STOP } from '../data/fx';
+import { MUSIC } from '../data/audio';
+import '../ui/juice.css';
 import { Tutorial } from '../gameplay/Tutorial';
 import { TutorialHud } from '../ui/TutorialHud';
 import { TUTORIAL } from '../data/tutorial';
@@ -107,6 +116,19 @@ export class Game {
   /** Replaying the intro from Settings: no flags change, back home afterwards. */
   private replaying = false;
   private tutorialDoneT = -1;
+  private readonly audio: Audio;
+  private readonly haptics = new WebHaptics();
+  private readonly juice: JuiceFx;
+  private readonly postFx: PostFx;
+  private readonly quality = new QualityProbe();
+  private readonly fly: FlyFx;
+  private hitStop = 0;
+  private lastFly = 0;
+  private readonly catScreen = new THREE.Vector3();
+  private catPx = 0;
+  private catPy = 0;
+  private stemKey = -1;
+  private bannerKey = -1;
   private dragX: number | null = null;
   private readonly hud: Hud;
   private readonly gameOver: GameOver;
@@ -125,7 +147,8 @@ export class Game {
   private popped = false;
 
   constructor(private readonly host: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // SMAA in the post chain replaces MSAA; the composer needs no stencil.
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, stencil: false, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDER.maxDpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(this.renderer.domElement);
@@ -153,6 +176,11 @@ export class Game {
       continue: () => this.finishRun(),
     });
     this.scene.add(this.trail.root);
+    this.juice = new JuiceFx(this.bus);
+    this.scene.add(this.juice.particles.points);
+    this.audio = new Audio(this.bus);
+    this.postFx = new PostFx(this.renderer, this.scene, this.rig.camera);
+    this.fly = new FlyFx(host);
     this.home = new HomeScene(new EventBus<GameEvents>());
     this.home.scene.add(this.homeTrail.root);
     this.homeHud = new HomeHud(host, {
@@ -168,6 +196,7 @@ export class Game {
       refresh: () => this.refreshMeta(),
       reward: (title, lines) => popup(host, title, lines),
       addStats: (stats) => this.applyMetaStats(stats),
+      sound: (id) => this.audio.play(id),
     };
     this.market = new MarketScreen(ctx);
     this.screens = {
@@ -198,6 +227,7 @@ export class Game {
     };
     this.tutorial = new Tutorial(this.bus, this.run);
     this.tutorialHud = new TutorialHud(host);
+    this.gameOver.onTick = () => this.audio.play('tick');
     this.input = new Input(host, () => this.simTime);
     this.input.onTap = () => {
       if (this.fsm.is('paused')) this.fsm.go('run');
@@ -315,7 +345,11 @@ export class Game {
         },
         reviving: {},
       },
-      (next) => this.bus.emit('stateChange', next),
+      (next) => {
+        this.bus.emit('stateChange', next);
+        this.audio.setMode(next === 'run' ? 'run' : next === 'boot' || next === 'crashing' || next === 'paused' ? 'off' : 'home');
+        this.stemKey = -1;
+      },
     );
 
     window.addEventListener('resize', this.resize);
@@ -416,7 +450,37 @@ export class Game {
     b.on('satchelFull', () => this.hud.stamp(UI_TEXT.satchelFull, STAMP_COLORS.warn));
     b.on('fishBone', () => this.hud.stamp(UI_TEXT.fishBone, STAMP_COLORS.loot));
     b.on('wallKick', () => this.rig.addKick(CAMERA.landKick * 0.6));
-    b.on('crash', () => this.rig.addShake(0.3));
+    b.on('crash', () => {
+      this.rig.addShake(0.3);
+      this.hitStop = HIT_STOP.crashSec;
+      this.haptics.heavy();
+    });
+    b.on('stumble', () => {
+      this.hitStop = HIT_STOP.stumbleSec;
+      this.haptics.medium();
+    });
+    b.on('nearMiss', () => this.haptics.medium());
+    b.on('land', (impact) => {
+      if (impact > 12) this.haptics.light();
+    });
+    b.on('ability', () => this.haptics.medium());
+    b.on('coin', () => {
+      const now = performance.now();
+      if (now - this.lastFly < 90) return;
+      this.lastFly = now;
+      this.fly.fly('coin', this.catPx, this.catPy, this.hud.coinsTarget);
+    });
+    b.on('loot', () => this.fly.fly('loot', this.catPx, this.catPy, this.hud.satchelTarget));
+    // Every button: haptic tick and a soft pop (CLAUDE.md section 7).
+    this.host.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (!(e.target as HTMLElement).closest('button')) return;
+        this.haptics.tick();
+        this.audio.play('pop');
+      },
+      true,
+    );
     b.on('dukeTaunt', () => {
       this.pack.taunt();
       this.hud.taunt(this.rng.pick(DUKE_TAUNTS));
@@ -503,6 +567,10 @@ export class Game {
     const score = run.score.points;
     const loot: number[] = [];
     for (let i = 0; i < run.satchel.count; i++) loot.push(run.satchel.at(i));
+    if (score > p.bestScore && p.bestScore > 0) {
+      this.juice.confetti();
+      this.audio.play('stamp');
+    }
     this.gameOver.show({
       caught: run.caught,
       score,
@@ -614,6 +682,8 @@ export class Game {
     this.homeTrail.setTrail(p.outfit.trail);
     this.powerHud.setRoombaCount(p.inventory.roomba);
     this.powerHud.setAbility(p.ability);
+    this.audio.setEnabled(p.settings.music, p.settings.sfx);
+    this.haptics.enabled = p.settings.haptics;
   }
 
   private startRun(): void {
@@ -622,7 +692,7 @@ export class Game {
   }
 
   private anySheetOpen(): boolean {
-    return document.querySelector('.wr-sheet:not([hidden]), .wr-popup') !== null;
+    return overlays.open > 0;
   }
 
   private readonly onHomeClick = (e: MouseEvent): void => {
@@ -700,10 +770,23 @@ export class Game {
       // Real-time countdown for the end stamp, even though the world may be frozen.
       if (this.tutorial.finished) this.timeScale = 1;
     }
+    // Hit-stop: the world holds still for a beat on impact.
+    if (this.hitStop > 0) {
+      this.hitStop -= realDt;
+      return;
+    }
     const dt = realDt * this.timeScale;
     this.simTime += dt;
     this.fsm.update(dt);
   };
+
+  /** Auto quality tier from the first frames' average frame time. */
+  private sampleQuality(frameDt: number): void {
+    const tier = this.quality.sample(frameDt);
+    if (!tier) return;
+    this.postFx.setTier(tier);
+    this.juice.particles.setViewport(this.host.clientHeight * this.renderer.getPixelRatio());
+  }
 
   private renderHome(frameDt: number): void {
     const h = this.home;
@@ -722,7 +805,8 @@ export class Game {
     this.homeTrail.update(frameDt, 0, 0, h.previewOn ? 2 : 0, h.previewOn);
     this.homeTrail.root.position.copy(seat);
     this.homeTrail.root.scale.setScalar(h.cat.holder.scale.x);
-    this.renderer.render(h.scene, h.camera);
+    this.sampleQuality(frameDt);
+    this.postFx.render(h.scene, h.camera, frameDt);
   }
 
   private readonly render = (alpha: number, frameDt: number): void => {
@@ -781,10 +865,26 @@ export class Game {
       this.powerHud.update(pu, run.abilities.charge, frameDt);
       this.powerHud.setSpeedLines(pu.isOn('zoomies') || pu.isOn('fishRocket') || r.dashLeft > 0 || pu.isOn('catnip'));
       const boss = run.boss;
-      let banner = '';
-      if (run.secrets.inAlley) banner = UI_TEXT.alleyBanner.replace('{s}', String(Math.ceil(run.secrets.alleyLeft)));
-      else if (boss.phase === BossPhase.Throwing) banner = UI_TEXT.bossBanner.replace('{n}', String(boss.dodges)).replace('{t}', String(BOSS.throwsToWin));
-      this.powerHud.setBanner(banner);
+      // Banner text only rebuilds when its number changes.
+      const alley = run.secrets.inAlley;
+      const key = alley ? 1000 + Math.ceil(run.secrets.alleyLeft) : boss.phase === BossPhase.Throwing ? 2000 + boss.dodges : 0;
+      if (key !== this.bannerKey) {
+        this.bannerKey = key;
+        let banner = '';
+        if (alley) banner = UI_TEXT.alleyBanner.replace('{s}', String(Math.ceil(run.secrets.alleyLeft)));
+        else if (key) banner = UI_TEXT.bossBanner.replace('{n}', String(boss.dodges)).replace('{t}', String(BOSS.throwsToWin));
+        this.powerHud.setBanner(banner);
+      }
+      // Music stems follow speed; the filter closes during power-ups; Catnip pitches up.
+      const anyPower = pu.anyActive;
+      const catnip = pu.isOn('catnip');
+      const S = MUSIC.stems;
+      const tierSpeed = r.speed >= S.lead ? 2 : r.speed >= S.bass ? 1 : 0;
+      const stemKey = tierSpeed * 4 + (anyPower ? 2 : 0) + (catnip ? 1 : 0);
+      if (stemKey !== this.stemKey) {
+        this.stemKey = stemKey;
+        this.audio.setStems(r.speed, anyPower, catnip);
+      }
     }
 
     const mode = !afterCrash ? PackMode.Run : this.popped ? PackMode.Gloat : PackMode.Pounce;
@@ -795,13 +895,29 @@ export class Game {
     this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0, r.flying && !afterCrash);
     if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
     this.trail.update(dt, x, d.y + d.lift, r.speed, running && !d.boxed);
-    this.renderer.render(this.scene, this.rig.camera);
+    this.juice.update(frozen ? 0 : afterCrash ? frameDt : dt, {
+      x,
+      y: d.y,
+      dist,
+      speed: running ? r.speed : 0,
+      catnip: running && pu.isOn('catnip'),
+      fast: running && (pu.isOn('zoomies') || pu.isOn('fishRocket') || r.dashLeft > 0),
+      running,
+    });
+    // Cat position on screen, for reward fly-to-counter icons.
+    this.catScreen.set(x, d.y + 0.9, 0).project(this.rig.camera);
+    this.catPx = ((this.catScreen.x + 1) / 2) * this.host.clientWidth;
+    this.catPy = ((1 - this.catScreen.y) / 2) * this.host.clientHeight;
+    this.sampleQuality(frameDt);
+    this.postFx.render(this.scene, this.rig.camera, frameDt);
   };
 
   private readonly resize = (): void => {
     const w = this.host.clientWidth;
     const h = this.host.clientHeight;
     this.renderer.setSize(w, h, false);
+    this.postFx?.setSize(w, h);
+    this.juice?.particles.setViewport(h * this.renderer.getPixelRatio());
     this.rig.resize(w / h);
     this.home.resize(w / h);
     if (this.comic?.active) this.comic.layout();

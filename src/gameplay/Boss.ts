@@ -101,7 +101,8 @@ export class Boss {
         this.throwAnim = 0;
       }
     }
-    for (const o of field.obstacles) {
+    for (let i_o = 0; i_o < field.obstacles.length; i_o++) {
+      const o = field.obstacles[i_o];
       if (!o.active || !o.thrown) continue;
       if (o.flight > 0) o.flight = Math.max(0, o.flight - dt);
       if (!o.counted && o.s1 < r.distance - HITBOX.halfLength) {
@@ -120,7 +121,7 @@ export class Boss {
 
   private inFlight(field: Field): number {
     let n = 0;
-    for (const o of field.obstacles) if (o.active && o.thrown && !o.counted) n++;
+    for (let i_o = 0; i_o < field.obstacles.length; i_o++) { const o = field.obstacles[i_o]; if (o.active && o.thrown && !o.counted) n++; }
     return n;
   }
 }

@@ -62,7 +62,8 @@ export class Collision {
     const reach = r.speed * REFLEX.windowSec;
     const front = r.distance + HITBOX.halfLength;
     let best: Obstacle | null = null;
-    for (const o of this.field.obstacles) {
+    for (let i_o = 0; i_o < this.field.obstacles.length; i_o++) {
+      const o = this.field.obstacles[i_o];
       if (!o.active || o.hit || o.armed || !o.def.body) continue;
       const ahead = o.s0 - front;
       if (ahead < 0 || ahead > reach) continue;
@@ -77,7 +78,8 @@ export class Collision {
     const s = r.distance;
     const hl = HITBOX.halfLength;
 
-    for (const o of this.field.obstacles) {
+    for (let i_o = 0; i_o < this.field.obstacles.length; i_o++) {
+      const o = this.field.obstacles[i_o];
       if (!o.active) continue;
       if (o.armed && s - hl > o.s1) {
         o.armed = false;
@@ -149,13 +151,15 @@ export class Collision {
     // Fast dashes cover several metres per step: sweep from the previous distance.
     const s0 = Math.min(r.prevDistance, r.distance) - HITBOX.coinReachZ;
     const s1 = r.distance + HITBOX.coinReachZ;
-    for (const c of this.field.coins) {
+    for (let i_c = 0; i_c < this.field.coins.length; i_c++) {
+      const c = this.field.coins[i_c];
       if (!c.active || c.s < s0 || c.s > s1 || Math.abs(c.x - r.x) > rx) continue;
       if (c.y < ryLo || c.y > ryHi) continue;
       c.active = false;
       this.bus.emit('coin', 1);
     }
-    for (const p of this.field.pickups) {
+    for (let i_p = 0; i_p < this.field.pickups.length; i_p++) {
+      const p = this.field.pickups[i_p];
       if (!p.active || p.blocked || p.s < s0 || p.s > s1 || Math.abs(p.x - r.x) > rx) continue;
       if (p.y < ryLo || p.y > ryHi) continue;
       if (p.kind >= PickupKind.PowerUp) {

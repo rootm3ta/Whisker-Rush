@@ -154,6 +154,7 @@ export class MarketScreen {
       this.say(mul > 1 ? 'hot' : mul < 1 ? 'cold' : 'sell');
       this.haggle = 1;
       this.coinFall(Math.min(12, 3 + n));
+      this.ctx.sound('register');
       this.ctx.addStats({ itemsSold: n, socksSold: isSock ? n : 0 });
       this.ctx.save.write();
       void coins;
@@ -162,6 +163,7 @@ export class MarketScreen {
       if (r.items === 0) return;
       this.say('sellAll');
       this.coinFall(MARKET.waterfallSteps);
+      this.ctx.sound('register');
       this.ctx.addStats({ itemsSold: r.items, socksSold: r.socks });
       this.ctx.save.write();
       this.ctx.reward('Sold!', [`${r.items} items`, `+${r.coins} coins`]);
