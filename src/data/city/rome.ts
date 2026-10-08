@@ -76,6 +76,8 @@ const LOOT: LootItem[] = [
 const DOGS: Record<string, DogDef> = {
   greyhound: {
     name: 'Nico',
+    build: 'greyhound',
+    breed: 'Italian greyhound',
     scale: 1.25,
     body: { radius: 0.12, length: 0.5, color: 0x9aa0a8 },
     head: { radius: 0.11, color: 0x9aa0a8 },
@@ -93,6 +95,8 @@ const DOGS: Record<string, DogDef> = {
   },
   spinone: {
     name: 'Bruno',
+    build: 'spinone',
+    breed: 'Spinone Italiano',
     scale: 1.3,
     body: { radius: 0.2, length: 0.45, color: 0xf3ead8 },
     head: { radius: 0.17, color: 0xf3ead8 },

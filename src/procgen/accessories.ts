@@ -147,7 +147,7 @@ const BUILD: Record<string, (c: readonly number[]) => THREE.Object3D> = {
 const ANCHOR: Record<Exclude<Slot, 'trail'>, (rig: CatRig) => { parent: THREE.Object3D; pos: [number, number, number] }> = {
   head: (r) => ({ parent: r.head, pos: [0, 0, 0] }),
   eyes: (r) => ({ parent: r.head, pos: [0, 0, 0] }),
-  neck: (r) => ({ parent: r.body, pos: [0, 0.1, -0.36] }),
+  neck: (r) => ({ parent: r.neck, pos: [0, -0.02, 0.02] }),
   back: (r) => ({ parent: r.body, pos: [0, S.torsoRadius + 0.01, 0.05] }),
   tail: (r) => ({ parent: r.tail[r.tail.length - 1], pos: [0, 0, S.tailSegLength * 0.4] }),
 };

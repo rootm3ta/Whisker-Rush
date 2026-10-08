@@ -11,7 +11,7 @@ export const CAT_COLORS = {
 
 export const CAT_SHAPE = {
   scale: 1.6,
-  torsoRadius: 0.2,
+  torsoRadius: 0.17,
   torsoLength: 0.5,
   legLength: 0.36,
   legRadius: 0.06,
@@ -19,7 +19,7 @@ export const CAT_SHAPE = {
   headPos: [0, 0.17, -0.48] as const,
   earPos: [0.1, 0.15, 0] as const,
   earSize: [0.075, 0.17] as const,
-  eyePos: [0.075, 0.03, -0.165] as const,
+  eyePos: [0.078, 0.025, -0.165] as const,
   frontHip: [0.11, -0.05, -0.28] as const,
   backHip: [0.11, -0.05, 0.28] as const,
   tailBase: [0, 0.1, 0.42] as const,
@@ -32,6 +32,9 @@ export const CAT_SHAPE = {
   blackPatches: 4,
   shadowRadius: 0.5,
   shadowOpacity: 0.2,
+  /** Surface-net cell size (model units), then decimated to `bodyTris` triangles. */
+  cell: 0.02,
+  bodyTris: 4400,
 } as const;
 
 export const CAT_ANIM = {
@@ -75,4 +78,21 @@ export const CAT_ANIM = {
   grindBack: -0.35,
   grindWobble: 0.08,
   grindWobbleHz: 1.6,
+  /** Rotary gallop: phase offsets of FL, FR, BL, BR (radians). */
+  gallopPhase: [0, 0.45, Math.PI + 0.45, Math.PI] as const,
+  /** Spine flexion and extension per stride (chest and hips counter-rotate). */
+  spineFlex: 0.16,
+  /** Elbow and hock fold while a leg swings forward. */
+  kneeFold: 0.9,
+  /** Air tuck and slide pose for the lower legs. */
+  airKneeFront: 1.1,
+  airKneeBack: -0.9,
+  /** Head counter-rotation that keeps the eyes level while galloping (0..1). */
+  headStabilize: 0.85,
+  /** Pupil width: daylight slits, dim light, Catnip. */
+  pupil: { day: 0.45, dim: 0.95, catnip: 1.45, rate: 6 },
+  /** Wall-kick barrel roll. */
+  kickRollSec: 0.42,
+  /** Home grooming idle: lick a paw and wipe the face. */
+  groomSec: 3.2,
 } as const;

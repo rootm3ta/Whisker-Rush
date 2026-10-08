@@ -5,6 +5,7 @@ import { HOME, WINDOW, type HomeAction, type TimeOfDay } from '../data/home';
 import { Cat, type CatDrive } from '../entities/Cat';
 import { createToonMaterial } from './ToonMaterial';
 import { WindowView, glowTexture } from './WindowView';
+import { CAT_ANIM } from '../data/cat';
 
 const HS = HOME.hotspot;
 const SPARKS = 24;
@@ -70,6 +71,9 @@ export class HomeScene {
   private chatterT = 0;
   private puffT = 0;
   hotspotsOn = true;
+  private headYaw = 0;
+  /** Grooming comes and goes while Miso sits on the couch. */
+  private groomIn = 6;
   private mugFall = -1;
   private stretch = 0;
   private t = 0;
@@ -248,6 +252,7 @@ export class HomeScene {
     this.hemi.color.setHex(T.amb);
     this.hemi.intensity = T.ambI;
     const night = T.lamp !== 0;
+    this.cat.setDaylight(!night);
     this.lampLight.intensity = night ? 6 : 0;
     this.shadeMat.color.setHex(night ? 0xfff0c0 : HOME.colors.lamp);
   }
@@ -371,11 +376,15 @@ export class HomeScene {
         if (k >= 1) this.miso = 'couch';
         break;
     }
+    // Groom now and then while sitting on the couch with nothing to watch.
+    this.groomIn -= dt;
+    if (this.groomIn < -CAT_ANIM.groomSec) this.groomIn = 8 + Math.random() * 6;
+    this.drive.groom = this.miso === 'couch' && !this.previewOn && this.groomIn < 0;
     this.cat.update(dt, this.drive);
     const r = this.cat.rig;
     if (this.miso === 'sill' || this.miso === 'up') {
       // Ears forward, tail tip twitching, head tracking whatever is outside.
-      for (const e of r.ears) e.rotation.x = 0.3;
+      for (const e of r.ears) e.rotation.x = -0.35;
       const n = r.tail.length;
       r.tail[n - 1].rotation.y += Math.sin(this.t * 13) * 0.35;
       r.tail[n - 2].rotation.y += Math.sin(this.t * 13 - 0.6) * 0.2;
@@ -386,10 +395,11 @@ export class HomeScene {
         const dz = f.z - this.tmpV.z;
         const yaw = Math.max(-0.9, Math.min(0.9, Math.atan2(-dx, -dz)));
         const pitch = Math.max(-0.3, Math.min(0.5, Math.atan2(f.y - this.tmpV.y, Math.hypot(dx, dz))));
-        r.head.rotation.y += (yaw - r.head.rotation.y) * Math.min(1, dt * 8);
+        this.headYaw += (yaw - this.headYaw) * Math.min(1, dt * 8);
         r.head.rotation.x += pitch;
       }
-    } else r.head.rotation.y *= 1 - Math.min(1, dt * 6);
+    } else this.headYaw *= 1 - Math.min(1, dt * 6);
+    r.head.rotation.y += this.headYaw;
     if (this.chatterT > 0) {
       this.chatterT -= dt;
       r.head.rotation.z = Math.sin(this.t * 48) * 0.06;
@@ -399,7 +409,7 @@ export class HomeScene {
       this.puffT -= dt;
       const p = Math.min(1, this.puffT * 3, (2.2 - this.puffT) * 6);
       r.body.scale.multiplyScalar(1 + 0.16 * p);
-      for (const e of r.ears) e.rotation.x = -0.6 * p;
+      for (const e of r.ears) e.rotation.x = 0.8 * p;
       for (let i = 0; i < r.tail.length; i++) r.tail[i].rotation.x -= 0.25 * p;
     }
   }

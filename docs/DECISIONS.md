@@ -131,3 +131,13 @@ One line per judgment call.
 - S3: IIAP.purchase now returns 'ok' | 'cancelled' | 'failed' so the shop can explain what happened; the web mock store offers Buy, Simulate failure and Cancel.
 - S3: Paw Pass products moved to the Pass screen (it buys through the same confirm sheet). Fish Bones S retired from the shelf (kept in the catalog for receipts).
 - S3: Sheets re-append themselves on open so the most recently opened sheet is always on top (odds over the boutique, boutique over the Pass).
+- S4: CC0 model sourcing failed (poly.pizza blocked, Quaternius only via itch/Drive pages); details and manual drop-in paths in docs/ASSETS.md.
+- S4: Characters are smooth SDF bodies (ellipsoids + tapered capsules, smooth-min blended), meshed with surface nets (simpler than marching cubes, no tables) at a fine grid, vertices snapped onto the surface, normals from the SDF gradient, then edge-collapse decimated (curvature-aware, re-projected) to about 4k triangles.
+- S4: The rig keeps its old node names (body, head, legs, tail...) but they are now bones driving one skinned mesh, so the existing animation, accessories and comic scenes keep working.
+- S4: Coat patterns, eyes, ears, nose and dog accessories are vertex colours / rigid parts inside the same skinned mesh: one draw call per character body plus one for the outline. Whiskers stay a line set.
+- S4: Fur look = toon ramp + warm rim light + a dithered fresnel "fuzz" on the silhouette (custom onBeforeCompile on the shared fur material). Outline is 60% of the old width.
+- S4: Cats gallop with a rotary footfall and spine flexion; dogs use a transverse gallop with a stiffer spine, a springier bounce for terriers and Shibas, flapping long ears and Duke's bouncing jowls.
+- S4: Pupils are bones: slits in daylight, round at dusk and night (Home follows the clock), wide during Catnip.
+- S4: No kitten exists in the roster; a `KITTEN_MORPH` preset is ready for one. Professor Mittens gets fluffier cheeks, Sushi is slimmer.
+- S4: New breeds (Shiba "Kenta", Akita "Haru", Georgian Shepherd "Gela", ear-tagged street dog "Lali") live in `BREEDS` in data/dogs.ts for S5/S6.
+- S4: Bodies polygonise in about 0.2 to 0.4 s per new skin or breed and are cached; rebuilds with the same skin are instant.

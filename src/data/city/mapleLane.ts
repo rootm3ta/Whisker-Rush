@@ -67,6 +67,8 @@ const LOOT: LootItem[] = [
 const DOGS: Record<string, DogDef> = {
   pickle: {
     name: 'Pickle',
+    build: 'dachshund',
+    breed: 'Dachshund',
     scale: 1.2,
     body: { radius: 0.15, length: 0.62, color: 0x8a4b2a },
     head: { radius: 0.15, color: 0x8a4b2a },
@@ -84,6 +86,8 @@ const DOGS: Record<string, DogDef> = {
   },
   bolt: {
     name: 'Bolt',
+    build: 'terrier',
+    breed: 'Jack Russell terrier',
     scale: 1.2,
     body: { radius: 0.17, length: 0.36, color: 0xf6f0e4 },
     head: { radius: 0.16, color: 0xf6f0e4 },
