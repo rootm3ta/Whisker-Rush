@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { CityPalette } from '../data/cities';
+import type { BasePalette } from '../data/cities';
 
 /** Vertical gradient sky as a tiny canvas texture used for scene.background. */
-export function createSkyTexture(p: CityPalette): THREE.CanvasTexture {
+export function createSkyTexture(p: BasePalette): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 2;
   c.height = 256;

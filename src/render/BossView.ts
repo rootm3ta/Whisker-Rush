@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { DOGS } from '../data/dogs';
 import { Dog } from '../entities/Dog';
 import { BossPhase, type Boss } from '../gameplay/Boss';
-import { OBSTACLE_GEOMETRY } from '../procgen/obstacles';
+import type { CityKit } from '../procgen/city/kit';
+import { MAPLE_KIT } from '../procgen/city/mapleLane';
 import { CrashFx } from './CrashFx';
 import { createToonMaterial } from './ToonMaterial';
 
@@ -16,10 +17,18 @@ export class BossView {
   /** After the swerve the truck stays put at a fixed track distance. */
   private parkedS = -1;
   private parkedX = 0;
+  private readonly vehicle: THREE.Mesh;
+
+  /** City vehicle (mail truck, delivery scooter) and where Duke sits on it. */
+  setVehicle(kit: CityKit, riderY: number, riderZ: number): void {
+    this.vehicle.geometry.dispose();
+    this.vehicle.geometry = kit.bossVehicle();
+    this.duke.rig.root.position.set(0, riderY, riderZ);
+  }
 
   constructor() {
-    const mesh = new THREE.Mesh(OBSTACLE_GEOMETRY.mailTruck(), createToonMaterial(0xffffff, { vertexColors: true }));
-    this.truck.add(mesh);
+    this.vehicle = new THREE.Mesh(MAPLE_KIT.bossVehicle(), createToonMaterial(0xffffff, { vertexColors: true }));
+    this.truck.add(this.vehicle);
     this.duke.rig.root.position.set(0, 2.5, -3);
     this.truck.add(this.duke.rig.root);
     this.truck.visible = false;

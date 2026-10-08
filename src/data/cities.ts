@@ -1,62 +1,20 @@
-/** One palette per city. Colors are hex numbers. */
-export interface CityPalette {
-  skyTop: number;
-  skyHorizon: number;
-  fog: number;
-  sun: number;
-  hemiSky: number;
-  hemiGround: number;
-  road: number;
-  stripe: number;
-  curb: number;
-  sidewalk: number;
-  lawn: number;
-  houseBodies: readonly number[];
-  roofs: readonly number[];
-  doors: readonly number[];
-  window: number;
-  fence: number;
-  trunk: number;
-  leaves: readonly number[];
-  bushes: readonly number[];
-  lampPost: number;
-  lampHead: number;
-}
+import { MAPLE_LANE } from './city/mapleLane';
+import { ROME } from './city/rome';
+import type { CityDef, CityId } from './city/types';
 
-export interface CityDef {
-  name: string;
-  palette: CityPalette;
-  zones: readonly string[];
-}
+export type { BasePalette, CityDef, CityId, MusicTheme } from './city/types';
 
-export const CITIES = {
-  mapleLane: {
-    name: 'Maple Lane',
-    zones: ['Suburbs', 'Market Street', 'Park', 'Old Town', 'Riverside'],
-    palette: {
-      skyTop: 0x86bde6,
-      skyHorizon: 0xffd6a0,
-      fog: 0xffd6a0,
-      sun: 0xffe2b8,
-      hemiSky: 0xfff1dc,
-      hemiGround: 0x9aaed4,
-      road: 0x6e6a73,
-      stripe: 0xf6e7c1,
-      curb: 0xe2dac8,
-      sidewalk: 0xcdc3ae,
-      lawn: 0x9cc46b,
-      houseBodies: [0x9fdcc4, 0xbfe8d6, 0xf3e6c9, 0xf6c9a8, 0x8ccfbf],
-      roofs: [0x8a4b3a, 0x5b4a5e, 0xa9573f, 0x4f5d6b],
-      doors: [0x7a4a33, 0x3f6f8a, 0xc8553d],
-      window: 0xffe3a1,
-      fence: 0xfaf4e6,
-      trunk: 0x6b4a35,
-      leaves: [0xe9813a, 0xd9562e, 0xf2b33d, 0xe9813a, 0x8fb35a],
-      bushes: [0x6f9e4f, 0x86b25a, 0x5f8f48],
-      lampPost: 0x3b4a45,
-      lampHead: 0xffe9b0,
-    },
-  },
-} satisfies Record<string, CityDef>;
+/** Playable cities. Adding a city: one data file in data/city plus one kit in procgen/city. */
+export const CITIES: Record<CityId, CityDef> = { mapleLane: MAPLE_LANE, rome: ROME };
+
+/** World Tour order, including cities that are not built yet (shown as "coming soon"). */
+export const WORLD_TOUR: readonly { id: string; name: string; x: number; y: number; playable: boolean }[] = [
+  { id: 'mapleLane', name: 'Maple Lane', x: MAPLE_LANE.map.x, y: MAPLE_LANE.map.y, playable: true },
+  { id: 'rome', name: 'Rome', x: ROME.map.x, y: ROME.map.y, playable: true },
+  { id: 'paris', name: 'Paris', x: 0.46, y: 0.3, playable: false },
+  { id: 'berlin', name: 'Berlin', x: 0.56, y: 0.26, playable: false },
+  { id: 'tokyo', name: 'Tokyo', x: 0.86, y: 0.4, playable: false },
+  { id: 'tbilisi', name: 'Tbilisi', x: 0.66, y: 0.38, playable: false },
+];
 
 export const FOG = { near: 30, far: 140 } as const;

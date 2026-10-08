@@ -94,3 +94,12 @@ One line per judgment call.
 - M7: Haptics behind `IHaptics`; the web version uses `navigator.vibrate` (Android browsers; iOS Safari ignores it). Real Taptic feedback comes with Capacitor in M9.
 - M7: The SVG wobble filter (feTurbulence + feDisplacementMap, scale 2.2) applies to buttons, cards, sheets and pills, not to the fast-changing run HUD numbers. Paper grain is a tiny inline SVG noise image.
 - M7: Performance check (headless, run state, Catnip active): 95 draw calls, 26k triangles, heap flat after GC. Hot-path loops over pools are indexed (no iterators). About 14 KB/s of short-lived garbage remains (V8 number boxing in not-yet-optimized code and DOM writes on coin pickups); Tone.js schedules its own events and allocates while music plays.
+- M8: Cities are data + kit: `src/data/city/<id>.ts` (CityDef) and `src/procgen/city/<id>.ts` (CityKit). Registries merge obstacles, loot, dogs and kits; `Track` is now generic and lays out whatever props a kit declares. See docs/ADDING_A_CITY.md.
+- M8: `LOOT_ITEMS` (was LOOT_MAPLE_LANE) is the global, append-only loot catalog with a `city` tag; runs roll from the current city's items. Old Tom's market stays at home and buys loot from every city (no "sells best at home" bonus yet).
+- M8: Obstacle ids are plain strings; per-instance colors use `tints` on the definition (cars, Fiats, Vespas).
+- M8: Rome hazards are behaviour flags: `weaves` (Vespas drive at 6 m/s and change lanes every 1.3-2.4 s, never within 14 m of the cat) and `drops` (laundry hangs overhead until 0.9 s away, falls in 0.5 s and lands as a jumpable pile).
+- M8: Rome shortcuts: fountain rims (walkable 0.8 m top) and striped market awnings (2.1 m high layer, reached from a rim, a Fiat or a wall-kick).
+- M8: Rome dogs: Bruno the Spinone lunges, Nico the Italian greyhound runs the Pack Rush. Duke rides a delivery scooter with a pizza box carrier and throws pizza boxes, crates and cafe tables.
+- M8: Rome music: 116 BPM swing in A minor (Am, Dm, E7, Am), accordion (detuned saws + vibrato) on the off-beats, oom-pah bass, tremolo mandolin (Karplus-Strong plucks) on a seeded pentatonic melody.
+- M8: Rome unlocks with a 3000 m best run, 20,000 coins or 40 Fish Bones. Paris, Berlin, Tokyo and Tbilisi are on the map as "coming soon". The tutorial and first run always happen in Maple Lane.
+- M8: Lucky Bells are now tracked per city (`bellsByCity`); the old `bells` list migrates to Maple Lane.

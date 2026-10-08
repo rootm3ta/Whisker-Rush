@@ -1,19 +1,8 @@
-/** Obstacle definitions for Maple Lane. Geometry is authored front face at z=0 extending to -length. */
-export type ObstacleId =
-  | 'trashCans'
-  | 'hedge'
-  | 'bike'
-  | 'sprinkler'
-  | 'gardenFence'
-  | 'lowBranch'
-  | 'laundry'
-  | 'car'
-  | 'mailTruck'
-  | 'ramp'
-  | 'hedgeWall'
-  | 'clothesline'
-  | 'catDoorWall'
-  | 'parcel';
+import { MAPLE_LANE } from './city/mapleLane';
+import { ROME } from './city/rome';
+
+/** Obstacle ids are strings: each city file adds its own. Geometry is authored front face at z=0 extending to -length. */
+export type ObstacleId = string;
 
 export interface ObstacleDef {
   /** Default length along the track (m). Clotheslines can override per pattern. */
@@ -36,26 +25,24 @@ export interface ObstacleDef {
   capacity: number;
   /** Has a glowing cat flap on its side (Secret Alley entrance). */
   catDoor?: boolean;
+  /** Per-instance color choices (cars, scooters). */
+  tints?: readonly number[];
+  /** Drives along slower than the cat and changes lanes (Rome's Vespas). */
+  weaves?: boolean;
+  /** Hangs overhead until the cat gets close, then drops into the lane (falling laundry). */
+  drops?: boolean;
 }
 
-const base = { top: null, ramp: false, grind: false, lethal: false, kickable: false } as const;
+import { base } from './obstacleBase';
 
-export const OBSTACLES: Record<ObstacleId, ObstacleDef> = {
-  trashCans: { ...base, length: 1.0, halfWidth: 1.0, body: [0, 1.0], lethal: true, capacity: 16 },
-  hedge: { ...base, length: 1.2, halfWidth: 1.2, body: [0, 0.85], capacity: 12 },
-  bike: { ...base, length: 0.8, halfWidth: 1.0, body: [0, 0.75], capacity: 8 },
-  sprinkler: { ...base, length: 0.8, halfWidth: 1.1, body: [0, 0.65], capacity: 8 },
-  gardenFence: { ...base, length: 0.3, halfWidth: 1.3, body: [0, 1.0], lethal: true, capacity: 10 },
-  lowBranch: { ...base, length: 0.6, halfWidth: 1.3, body: [0.85, 2.6], capacity: 8 },
-  laundry: { ...base, length: 0.4, halfWidth: 1.3, body: [0.85, 2.6], capacity: 8 },
-  car: { ...base, length: 4.2, halfWidth: 1.05, body: [0, 1.4], top: 1.4, lethal: true, kickable: true, capacity: 12 },
-  mailTruck: { ...base, length: 6.5, halfWidth: 1.2, body: [0, 2.5], top: 2.5, lethal: true, kickable: true, capacity: 6 },
+/** Shared by every city. */
+const SHARED: Record<string, ObstacleDef> = {
   ramp: { ...base, length: 4, halfWidth: 1.2, body: null, top: 1.4, ramp: true, capacity: 6 },
-  hedgeWall: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 8 },
   clothesline: { ...base, length: 20, halfWidth: 1.4, body: null, top: 1.5, grind: true, capacity: 6 },
-  catDoorWall: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 2, catDoor: true },
   parcel: { ...base, length: 0.9, halfWidth: 0.9, body: [0, 0.95], lethal: true, capacity: 12 },
 };
+
+export const OBSTACLES: Record<ObstacleId, ObstacleDef> = { ...SHARED, ...MAPLE_LANE.obstacles, ...ROME.obstacles };
 
 export const OBSTACLE_IDS = Object.keys(OBSTACLES) as ObstacleId[];
 

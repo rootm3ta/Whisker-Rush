@@ -174,7 +174,11 @@ function clothesline(): THREE.BufferGeometry {
   return merge([box(0.05, 0.05, 1, K.rope, 0, 1.5, -0.5)]);
 }
 
-export const OBSTACLE_GEOMETRY: Record<ObstacleId, () => THREE.BufferGeometry> = {
+/** Obstacles every city can use. */
+export const SHARED_OBSTACLES: Record<ObstacleId, () => THREE.BufferGeometry> = { ramp, clothesline, parcel };
+
+/** Maple Lane obstacles (the Maple kit re-exports these). */
+export const MAPLE_OBSTACLES: Record<ObstacleId, () => THREE.BufferGeometry> = {
   trashCans,
   hedge,
   bike,
@@ -184,12 +188,12 @@ export const OBSTACLE_GEOMETRY: Record<ObstacleId, () => THREE.BufferGeometry> =
   laundry,
   car,
   mailTruck,
-  ramp,
   hedgeWall,
-  clothesline,
   catDoorWall,
-  parcel,
 };
+
+/** Shared helpers for other city kits. */
+export { box, cyl, blob, part };
 
 export function clotheslinePole(): THREE.BufferGeometry {
   return merge([cyl(0.06, 1.7, K.pole, 0, 0.85, 0, 6), box(0.5, 0.05, 0.05, K.pole, 0, 1.6, 0)]);

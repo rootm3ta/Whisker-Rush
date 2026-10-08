@@ -27,6 +27,8 @@ export class Boss {
   private laneT = 0;
   private targetX = 0;
   private readonly rng = new Rng(3000);
+  /** What Duke throws in this city. */
+  throwIds: readonly string[] = BOSS.throwIds;
 
   constructor(private readonly bus: EventBus<GameEvents>) {}
 
@@ -93,7 +95,7 @@ export class Boss {
     if (this.throwT <= 0 && this.dodges + this.inFlight(field) < BOSS.throwsToWin) {
       this.throwT = BOSS.throwEvery;
       const lane = this.rng.next() < 0.6 ? r.lane : this.rng.int(-1, 2);
-      const id = this.rng.pick(BOSS.throwIds);
+      const id = this.rng.pick(this.throwIds);
       const o = field.addObstacle(id, lane * LANES.width, r.distance + this.ahead, OBSTACLES[id].length, 0xffffff);
       if (o) {
         o.thrown = true;

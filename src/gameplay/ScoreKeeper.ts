@@ -1,6 +1,6 @@
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
-import { LOOT_MAPLE_LANE, RARITIES } from '../data/pickups';
+import { LOOT_ITEMS, RARITIES } from '../data/pickups';
 import { PACK_RUSH } from '../data/chase';
 import { COMBO, POINTS, STUNTS, STUNT_RULES } from '../data/scoring';
 import type { Score } from './Score';
@@ -25,7 +25,7 @@ export class ScoreKeeper {
   ) {
     score.onBump = (gain) => bus.emit('comboGain', gain);
     bus.on('coin', () => this.onCoin());
-    bus.on('loot', (item) => score.award(RARITIES[LOOT_MAPLE_LANE[item].rarity].points));
+    bus.on('loot', (item) => score.award(RARITIES[LOOT_ITEMS[item].rarity].points));
     bus.on('fishBone', () => {
       score.fishBones++;
       score.award(POINTS.fishBone);

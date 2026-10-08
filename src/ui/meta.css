@@ -348,3 +348,20 @@
     transform: translateY(110vh) rotate(540deg);
   }
 }
+.wr-map {
+  width: 100%;
+  height: auto;
+  margin: 4px 0 8px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+.wr-map .wr-pin {
+  cursor: pointer;
+}
+.wr-map text {
+  fill: #2a201c;
+  paint-order: stroke;
+  stroke: #fbf6ec;
+  stroke-width: 3px;
+}

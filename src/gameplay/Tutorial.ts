@@ -1,7 +1,7 @@
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import { LANES } from '../data/runner';
-import { LOOT_MAPLE_LANE } from '../data/pickups';
+import { LOOT_ITEMS } from '../data/pickups';
 import { POWERUP_IDS } from '../data/powerups';
 import { TUTORIAL, type Hint, type TutorialStepId } from '../data/tutorial';
 import { HITBOX } from '../data/spawner';
@@ -10,7 +10,7 @@ import { PickupKind, type Obstacle } from './Field';
 import type { RunSession } from './RunSession';
 
 const MAGNET = POWERUP_IDS.indexOf('magnet');
-const TOY_MOUSE = LOOT_MAPLE_LANE.findIndex((i) => i.id === 'toyMouse');
+const TOY_MOUSE = LOOT_ITEMS.findIndex((i) => i.id === 'toyMouse');
 
 /**
  * Scripted tutorial run (GAME_DESIGN 8.2). Each step places its setup ahead of the cat,

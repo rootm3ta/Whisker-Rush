@@ -1,6 +1,7 @@
 import { ABILITY, type AbilityId } from '../data/abilities';
 import type { Slot } from '../data/accessories';
 import type { CatId } from '../data/cats';
+import type { CityId } from '../data/cities';
 import { ECONOMY_START } from '../data/chase';
 import type { MissionStat, UpgradeId } from '../data/economy';
 import type { IStorage } from '../platform/Storage';
@@ -20,7 +21,11 @@ export interface Profile {
   revives: number;
   inventory: { roomba: number; zoomies: number; fishRocket: number };
   ability: AbilityId;
-  bells: number[];
+  /** Lucky Bell ids found, per city. */
+  bellsByCity: Partial<Record<CityId, number[]>>;
+  /** Unlocked World Tour cities and the one runs happen in. */
+  cities: CityId[];
+  city: CityId;
   goldenCollar: boolean;
   hunt: { day: number; found: number[] };
   /** Loot item id -> count, kept between runs for Old Tom. */
@@ -59,7 +64,9 @@ export function defaultProfile(): Profile {
     revives: 0,
     inventory: { ...ECONOMY_START.inventory },
     ability: ABILITY.default,
-    bells: [],
+    bellsByCity: {},
+    cities: ['mapleLane'],
+    city: 'mapleLane',
     goldenCollar: false,
     hunt: { day: -1, found: [] },
     stash: {},
@@ -96,6 +103,12 @@ export function migrate(raw: unknown): Profile {
   // Players from before onboarding existed have already played: skip the first-session flow.
   merged.flags = p.flags ? { ...base.flags, ...p.flags } : { ...base.flags, ...(p.runs ? { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true } : {}) };
   if (!merged.cats.includes('miso')) merged.cats = ['miso', ...merged.cats];
+  // v2 saves before the World Tour kept Maple Lane bells in `bells`.
+  const legacyBells = (p as { bells?: number[] }).bells;
+  if (legacyBells && !p.bellsByCity) merged.bellsByCity = { mapleLane: legacyBells };
+  delete (merged as { bells?: number[] }).bells;
+  if (!merged.cities.includes('mapleLane')) merged.cities = ['mapleLane', ...merged.cities];
+  if (!merged.cities.includes(merged.city)) merged.city = 'mapleLane';
   return merged;
 }
 

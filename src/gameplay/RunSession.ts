@@ -22,6 +22,8 @@ import { Score } from './Score';
 import { ScoreKeeper } from './ScoreKeeper';
 import { rollLootAtLeast, Secrets } from './Secrets';
 import { Spawner } from './Spawner';
+import { Hazards } from './Hazards';
+import { CITIES } from '../data/cities';
 import type { Rarity } from '../data/pickups';
 import { Rng } from '../core/Rng';
 import { defaultRunConfig, type RunConfig } from '../meta/Loadout';
@@ -43,6 +45,7 @@ export class RunSession {
   readonly abilities: Abilities;
   readonly secrets: Secrets;
   readonly boss: Boss;
+  readonly hazards = new Hazards();
   /** True when the last crash was a catch (second stumble), false for a head-on crash. */
   caught = false;
   readonly stats: RunStatsCollector;
@@ -84,6 +87,8 @@ export class RunSession {
 
   reset(seed?: number, profile: Profile | null = null, now = Date.now(), config: RunConfig = defaultRunConfig()): void {
     this.config = config;
+    this.spawner.setCity(config.city);
+    this.boss.throwIds = CITIES[config.city].boss.throwIds;
     this.runner.reset();
     this.runner.configure(config.laneSwitchSec, config.jumpHeight, config.coyoteSec, config.maxKicks);
     this.field.reset();
@@ -105,7 +110,7 @@ export class RunSession {
     this.slowMul = 1;
     this.spawner.catDoorMul = config.catDoorMul;
     this.stats.reset();
-    this.secrets.reset(profile, now);
+    this.secrets.reset(profile, now, config.city);
     this.boss.reset();
     this.mods.clear();
     this.caught = false;
@@ -187,7 +192,7 @@ export class RunSession {
       case PickupKind.Chest: {
         this.score.coins += BOSS.chestCoins;
         this.score.fishBones += BOSS.chestFishBones;
-        const loot = rollLootAtLeast(this.rng, this.runner.distance, BOSS.chestMinRarity as Rarity);
+        const loot = rollLootAtLeast(this.rng, this.runner.distance, BOSS.chestMinRarity as Rarity, this.config.city);
         if (this.satchel.add(loot)) this.bus.emit('loot', loot);
         this.bus.emit('chest', 0);
         break;
@@ -215,6 +220,7 @@ export class RunSession {
     this.wasBoss = bossNow;
 
     this.spawner.update(r.distance, r.speed);
+    this.hazards.step(dt, r, this.field);
     r.step(dt);
     this.collision.step(r, dt);
     if (r.grinding) this.stats.grindMeters += r.distance - r.prevDistance;

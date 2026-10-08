@@ -11,12 +11,21 @@ export const PackMode = { Run: 0, Pounce: 1, Gloat: 2 } as const;
 export class DogPack {
   readonly root = new THREE.Group();
   readonly duke = new Dog(DOGS.duke);
-  readonly pickle = new Dog(DOGS.pickle);
-  readonly bolt = new Dog(DOGS.bolt);
+  /** The lunging pup (Pickle at home) and the Pack Rush runner (Bolt at home). */
+  private pickle = new Dog(DOGS.pickle);
+  private bolt = new Dog(DOGS.bolt);
   private x = 0;
 
   constructor() {
     this.root.add(this.duke.rig.root, this.pickle.rig.root, this.bolt.rig.root);
+  }
+
+  /** Swaps the pups for a city's local breeds. `pups[1]` is assumed to be the rush dog. */
+  setPups(lunger: string, rusher: string): void {
+    this.root.remove(this.pickle.rig.root, this.bolt.rig.root);
+    this.pickle = new Dog(DOGS[lunger]);
+    this.bolt = new Dog(DOGS[rusher]);
+    this.root.add(this.pickle.rig.root, this.bolt.rig.root);
   }
 
   taunt(): void {

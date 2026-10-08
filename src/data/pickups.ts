@@ -1,3 +1,5 @@
+import { MAPLE_LANE } from './city/mapleLane';
+import { ROME } from './city/rome';
 /** Coins, loot, Fish Bones and Satchel (GAME_DESIGN 4.1, 4.2). */
 export const COIN = {
   /** Default coin height above its surface (m). */
@@ -22,30 +24,18 @@ export const RARITIES = [
 export const RARITY_DISTANCE_BONUS = [0, 0.1, 0.2, 0.3, 0.35] as const;
 
 export interface LootItem {
+  /** Home city (where it shows up in runs). */
+  city: string;
   id: string;
   name: string;
   rarity: Rarity;
   value: number;
 }
 
-export const LOOT_MAPLE_LANE: readonly LootItem[] = [
-  { id: 'bottleCap', name: 'Bottle Cap', rarity: 0, value: 5 },
-  { id: 'sock', name: 'Sock', rarity: 0, value: 6 },
-  { id: 'rubberBand', name: 'Rubber Band', rarity: 0, value: 5 },
-  { id: 'lostButton', name: 'Lost Button', rarity: 0, value: 8 },
-  { id: 'toyMouse', name: 'Toy Mouse', rarity: 1, value: 25 },
-  { id: 'shinySpoon', name: 'Shiny Spoon', rarity: 1, value: 35 },
-  { id: 'feather', name: 'Feather', rarity: 1, value: 20 },
-  { id: 'silverBell', name: 'Silver Bell', rarity: 2, value: 120 },
-  { id: 'lostEarring', name: 'Lost Earring', rarity: 2, value: 150 },
-  { id: 'vintageStamp', name: 'Vintage Stamp', rarity: 2, value: 90 },
-  { id: 'goldenMouse', name: 'Golden Mouse', rarity: 3, value: 500 },
-  { id: 'grandmasBrooch', name: "Grandma's Brooch", rarity: 3, value: 400 },
-  { id: 'dukesSunglasses', name: "Duke's Lost Sunglasses", rarity: 4, value: 1200 },
-  { id: 'postcardFragment', name: 'Postcard Fragment', rarity: 4, value: 1000 },
-];
+/** Every loot item in the game. Append-only: Satchel slots store indices into this list. */
+export const LOOT_ITEMS: readonly LootItem[] = [...MAPLE_LANE.loot, ...ROME.loot];
 
-export const SOCK_ITEM = LOOT_MAPLE_LANE.findIndex((i) => i.id === 'sock');
+export const SOCK_ITEM = LOOT_ITEMS.findIndex((i) => i.id === 'sock');
 
 export const LOOT = {
   /** Chance a loot slot becomes a Fish Bone instead. */

@@ -1,6 +1,7 @@
 import { COIN, LOOT } from '../data/pickups';
 import { OBSTACLES, type ObstacleDef, type ObstacleId } from '../data/obstacles';
 import { SPAWNER, WALL_KICK } from '../data/spawner';
+import { HAZARDS } from '../data/hazards';
 import type { RunnerWorld } from './Runner';
 
 export class Obstacle {
@@ -17,6 +18,11 @@ export class Obstacle {
   flight = 0;
   thrown = false;
   counted = false;
+  /** Weaving hazards: lane they are heading for and time to the next change. */
+  targetX = 0;
+  weaveT = 0;
+  /** Dropping hazards: falling now (flight counts down only while dropping). */
+  dropping = false;
 }
 
 export class Coin {
@@ -73,6 +79,10 @@ export class Field implements RunnerWorld {
       o.flight = 0;
       o.thrown = false;
       o.counted = false;
+      o.targetX = x;
+      o.weaveT = 0.5;
+      o.dropping = false;
+      if (o.def.drops) o.flight = HAZARDS.drop.fallSec;
       return o;
     }
     return null;

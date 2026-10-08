@@ -1,4 +1,4 @@
-import { LOOT_MAPLE_LANE, RARITIES } from '../data/pickups';
+import { LOOT_ITEMS, RARITIES } from '../data/pickups';
 import { UI_TEXT } from '../data/ui';
 import { hex } from '../render/Sky';
 import type { ReviveOption } from '../gameplay/Revive';
@@ -91,7 +91,7 @@ export class GameOver {
       const counts = new Map<number, number>();
       for (const i of d.loot) counts.set(i, (counts.get(i) ?? 0) + 1);
       for (const [i, n] of counts) {
-        const item = LOOT_MAPLE_LANE[i];
+        const item = LOOT_ITEMS[i];
         const chip = document.createElement('span');
         chip.className = 'wr-chip';
         chip.style.borderColor = hex(RARITIES[item.rarity].color);

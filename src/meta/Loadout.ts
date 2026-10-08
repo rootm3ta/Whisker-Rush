@@ -1,4 +1,5 @@
 import { CAT_PASSIVES } from '../data/cats';
+import type { CityId } from '../data/cities';
 import { UPGRADES, UPGRADE_FX, type UpgradeId } from '../data/economy';
 import type { PowerUpId } from '../data/powerups';
 import { RUNNER } from '../data/runner';
@@ -23,6 +24,7 @@ export interface RunConfig {
   multiplier: number;
   /** First real run after the tutorial: guaranteed fun (GAME_DESIGN 8.1). */
   firstRun: boolean;
+  city: CityId;
 }
 
 export function defaultRunConfig(): RunConfig {
@@ -40,6 +42,7 @@ export function defaultRunConfig(): RunConfig {
     startBubble: false,
     multiplier: 1,
     firstRun: false,
+    city: 'mapleLane',
   };
 }
 
@@ -61,5 +64,7 @@ export function computeRunConfig(p: Profile): RunConfig {
     startBubble: p.cat === 'pixel',
     multiplier: p.missions.multiplier,
     firstRun: p.flags.tutorialDone && !p.flags.firstRunDone,
+    // The tutorial and first run always happen at home.
+    city: p.flags.firstRunDone ? p.city : 'mapleLane',
   };
 }

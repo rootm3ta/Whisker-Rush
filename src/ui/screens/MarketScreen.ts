@@ -2,7 +2,7 @@ import { SETS } from '../../data/economy';
 import { MARKET } from '../../data/economy';
 import { ACCESSORIES } from '../../data/accessories';
 import { CONSUMABLES } from '../../data/economy';
-import { LOOT_MAPLE_LANE, RARITIES } from '../../data/pickups';
+import { LOOT_ITEMS, RARITIES } from '../../data/pickups';
 import { TOM_LINES } from '../../data/tom';
 import { NEWCOMER } from '../../data/tutorial';
 import { dailyBoard, haggleBonus, secretStock, sellPrice, stockBucket, type BoardEntry } from '../../meta/Economy';
@@ -87,7 +87,7 @@ export class MarketScreen {
 
   private renderSell(): string {
     const p = this.ctx.save.profile;
-    const chip = (e: BoardEntry) => `<span class="${e.mul > 1 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_MAPLE_LANE[e.item].name)} x${e.mul}</span>`;
+    const chip = (e: BoardEntry) => `<span class="${e.mul > 1 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_ITEMS[e.item].name)} x${e.mul}</span>`;
     let html = this.bonus > 1 ? `<p class="wr-chip-hot" style="display:block;text-align:center">Newcomer bonus: x${this.bonus} on everything today</p>` : '';
     html += `<p class="wr-note">Today's board (resets at midnight):</p><div>${this.board.map(chip).join('')}</div>`;
     html += `<div class="wr-haggle">`;
@@ -96,11 +96,11 @@ export class MarketScreen {
     else if (this.haggleUsed) html += `<b>No more haggling this visit.</b>`;
     else html += `<button class="wr-btn wr-btn-sm" data-act="haggle">Haggle (once per visit)</button>`;
     html += `</div>`;
-    const ids = Object.keys(p.stash).sort((a, b) => LOOT_MAPLE_LANE[itemIndex(b)].value - LOOT_MAPLE_LANE[itemIndex(a)].value);
+    const ids = Object.keys(p.stash).sort((a, b) => LOOT_ITEMS[itemIndex(b)].value - LOOT_ITEMS[itemIndex(a)].value);
     if (ids.length === 0) return html + `<p class="wr-note">Your stash is empty. Go grab some loot!</p>`;
     for (const id of ids) {
       const i = itemIndex(id);
-      const item = LOOT_MAPLE_LANE[i];
+      const item = LOOT_ITEMS[i];
       const each = sellPrice(i, this.board, sellMul(p) * this.bonus);
       html += `<div class="wr-row"><span class="wr-swatch" style="background:${hex(RARITIES[item.rarity].color)};width:18px;height:18px"></span>
         <div class="grow"><b>${esc(item.name)}</b> x${p.stash[id]}<small>${RARITIES[item.rarity].name} · ${price(each)} each</small></div>
@@ -131,7 +131,7 @@ export class MarketScreen {
     for (const s of SETS) {
       const pr = setProgress(p, s.id);
       const reward = s.reward.kind === 'cat' ? 'A new cat' : ACCESSORIES[s.reward.id].name;
-      const items = s.items.map((id) => `<span class="${(p.stash[id] ?? 0) > 0 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_MAPLE_LANE[itemIndex(id)].name)}</span>`).join('');
+      const items = s.items.map((id) => `<span class="${(p.stash[id] ?? 0) > 0 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_ITEMS[itemIndex(id)].name)}</span>`).join('');
       html += `<div class="wr-row"><div class="grow"><b>${esc(s.name)}</b> ${pr.have}/${pr.need}<small>Reward: ${esc(reward)}</small><div>${items}</div></div>
         ${pr.traded ? '<small>Traded</small>' : `<button class="wr-btn wr-btn-sm" data-set="${s.id}" ${pr.complete ? '' : 'disabled'}>Trade</button>`}</div>`;
     }
@@ -150,7 +150,7 @@ export class MarketScreen {
       const n = Number(d.n);
       const isSock = d.sell === 'sock';
       const coins = sell(p, d.sell, n, this.board, this.haggle, this.bonus);
-      const mul = this.board.find((b) => LOOT_MAPLE_LANE[b.item].id === d.sell)?.mul ?? 1;
+      const mul = this.board.find((b) => LOOT_ITEMS[b.item].id === d.sell)?.mul ?? 1;
       this.say(mul > 1 ? 'hot' : mul < 1 ? 'cold' : 'sell');
       this.haggle = 1;
       this.coinFall(Math.min(12, 3 + n));

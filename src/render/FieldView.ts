@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { BOSS } from '../data/boss';
-import { COIN, LOOT, LOOT_MAPLE_LANE, RARITIES } from '../data/pickups';
+import { HAZARDS } from '../data/hazards';
+import { COIN, LOOT, LOOT_ITEMS, RARITIES } from '../data/pickups';
 import { OBSTACLES, OBSTACLE_IDS, type ObstacleId } from '../data/obstacles';
 import { POWERUPS, POWERUP_IDS } from '../data/powerups';
 import { BELLS, DAILY_HUNT, MYSTERY_FISH } from '../data/secrets';
 import { PickupKind, type Field } from '../gameplay/Field';
+import { OBSTACLE_GEOMETRY } from '../procgen/cityKits';
 import {
-  OBSTACLE_GEOMETRY,
   bellGeometry,
   chestGeometry,
   clotheslinePole,
@@ -56,7 +57,7 @@ export class FieldView {
     for (let i_id = 0; i_id < OBSTACLE_IDS.length; i_id++) {
       const id = OBSTACLE_IDS[i_id];
       const mesh = this.instanced(OBSTACLE_GEOMETRY[id](), vc, OBSTACLES[id].capacity);
-      if (id === 'car') mesh.setColorAt(0, this.col.setHex(0xffffff));
+      if (OBSTACLES[id].tints) mesh.setColorAt(0, this.col.setHex(0xffffff));
       this.obstacles[id] = mesh;
     }
     this.poles = this.instanced(clotheslinePole(), vc, OBSTACLES.clothesline.capacity * 2);
@@ -121,7 +122,11 @@ export class FieldView {
       const i = this.counts[o.id]++;
       const z = distance - o.s0;
       const len = o.s1 - o.s0;
-      if (o.flight > 0) {
+      if (o.flight > 0 && o.def.drops) {
+        // Falling laundry: hangs from the balconies, then drops with gravity.
+        const p = 1 - o.flight / HAZARDS.drop.fallSec;
+        this.set(o.x, HAZARDS.drop.height * (1 - p * p), z, 0, Math.sin(this.time * 3 + o.s0) * 0.3, 1, 1);
+      } else if (o.flight > 0) {
         // Boss throw: arc from the truck roof down onto the road, tumbling.
         const p = 1 - o.flight / BOSS.flightSec;
         this.set(o.x, (1 - p) * 3.2 + Math.sin(p * Math.PI) * 1.4, z, p * 6, p * 3, 1, 1);
@@ -129,7 +134,7 @@ export class FieldView {
         this.set(o.x, 0, z, 0, 0, 1, o.id === 'clothesline' ? len : 1);
       }
       mesh.setMatrixAt(i, this.m);
-      if (o.id === 'car') mesh.setColorAt(i, this.col.setHex(o.color));
+      if (o.def.tints) mesh.setColorAt(i, this.col.setHex(o.color));
       if (o.id === 'clothesline') {
         this.set(o.x + 1.45, 0, z, 0, 0, 1, 1);
         this.poles.setMatrixAt(poles++, this.m);
@@ -169,7 +174,7 @@ export class FieldView {
         case PickupKind.Loot: {
           this.set(p.x, p.y + bob, z, spin * 0.6, 0, 1, 1);
           this.loot.setMatrixAt(nl, this.m);
-          const c = p.blocked ? 0x6d6d6d : RARITIES[LOOT_MAPLE_LANE[p.item].rarity].color;
+          const c = p.blocked ? 0x6d6d6d : RARITIES[LOOT_ITEMS[p.item].rarity].color;
           this.loot.setColorAt(nl++, this.col.setHex(c));
           break;
         }
@@ -237,6 +242,7 @@ export class FieldView {
 
   private finish(mesh: THREE.InstancedMesh, count: number): void {
     mesh.count = count;
+    mesh.visible = count > 0;
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }

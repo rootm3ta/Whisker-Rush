@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/Rng';
 import { OBSTACLES } from '../src/data/obstacles';
-import { PATTERNS } from '../src/data/patterns';
+import { CITIES } from '../src/data/cities';
+import type { Pattern } from '../src/data/patterns';
 import { RARITIES } from '../src/data/pickups';
 import { RUNNER } from '../src/data/runner';
 import { HITBOX, SPAWNER } from '../src/data/spawner';
 import { Field } from '../src/gameplay/Field';
-import { pickPattern, pickTier, rollRarity, Spawner, tierWeights, weightedIndex } from '../src/gameplay/Spawner';
+import { pickPattern, pickTier, rollLootItem, rollRarity, Spawner, tiersOf, tierWeights, weightedIndex } from '../src/gameplay/Spawner';
+import { LOOT_ITEMS } from '../src/data/pickups';
+
+const ALL: Pattern[] = Object.values(CITIES).flatMap((c) => c.patterns);
 
 describe('weights', () => {
   it('weightedIndex follows weights and skips zero weights', () => {
@@ -40,7 +44,7 @@ describe('weights', () => {
     const rng = new Rng(4);
     let last = null;
     for (let i = 0; i < 300; i++) {
-      const p = pickPattern(2, rng, last);
+      const p = pickPattern(tiersOf(CITIES.mapleLane.patterns)[1], rng, last);
       expect(p).not.toBe(last);
       last = p;
     }
@@ -57,14 +61,24 @@ describe('weights', () => {
 });
 
 describe('pattern library', () => {
-  it('has at least 20 patterns across all tiers', () => {
-    expect(PATTERNS.length).toBeGreaterThanOrEqual(20);
-    for (const t of [1, 2, 3]) expect(PATTERNS.some((p) => p.tier === t)).toBe(true);
+  it('every city has patterns in all three tiers (Maple Lane has 20+)', () => {
+    expect(CITIES.mapleLane.patterns.length).toBeGreaterThanOrEqual(20);
+    for (const c of Object.values(CITIES)) for (const t of [1, 2, 3]) expect(c.patterns.some((p) => p.tier === t), `${c.id} tier ${t}`).toBe(true);
+  });
+
+  it('patterns only use obstacles that exist', () => {
+    for (const p of ALL) for (const e of p.entries) if (e.t === 'o') expect(OBSTACLES[e.id], `${p.name}: ${e.id}`).toBeDefined();
+  });
+
+  it('city loot rolls stay in their city', () => {
+    const rng = new Rng(9);
+    for (let i = 0; i < 300; i++) expect(LOOT_ITEMS[rollLootItem(rng, 2000, 1, 'rome')].city).toBe('rome');
+    for (let i = 0; i < 300; i++) expect(LOOT_ITEMS[rollLootItem(rng, 2000, 1, 'mapleLane')].city).toBe('mapleLane');
   });
 
   it('every row leaves at least one lane without an unclimbable wall', () => {
     const wallHeight = RUNNER.jumpHeight + HITBOX.stepUp;
-    for (const p of PATTERNS) {
+    for (const p of ALL) {
       for (let z = 0; z <= p.length; z += 0.5) {
         let walls = 0;
         for (const lane of [-1, 0, 1]) {
@@ -82,7 +96,7 @@ describe('pattern library', () => {
   });
 
   it('entries stay inside the pattern length', () => {
-    for (const p of PATTERNS) {
+    for (const p of ALL) {
       for (const e of p.entries) expect(e.z, p.name).toBeLessThanOrEqual(p.length);
     }
   });

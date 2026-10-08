@@ -1,7 +1,7 @@
 import { Rng } from '../core/Rng';
 import { CAT_PASSIVES } from '../data/cats';
 import { CONSUMABLES, SETS, SET_COIN_BONUS, STASH, type Reward } from '../data/economy';
-import { LOOT_MAPLE_LANE } from '../data/pickups';
+import { LOOT_ITEMS } from '../data/pickups';
 import { sellPrice, type BoardEntry } from './Economy';
 import { grant } from './Rewards';
 import type { Profile } from './Save';
@@ -16,7 +16,7 @@ export function stashTotal(p: Profile): number {
 export function addToStash(p: Profile, items: readonly number[]): number {
   let coins = 0;
   for (const i of items) {
-    const item = LOOT_MAPLE_LANE[i];
+    const item = LOOT_ITEMS[i];
     if (stashTotal(p) >= STASH.capacity) {
       coins += item.value;
       continue;
@@ -28,7 +28,7 @@ export function addToStash(p: Profile, items: readonly number[]): number {
 }
 
 export function itemIndex(id: string): number {
-  return LOOT_MAPLE_LANE.findIndex((i) => i.id === id);
+  return LOOT_ITEMS.findIndex((i) => i.id === id);
 }
 
 export function sellMul(p: Profile): number {

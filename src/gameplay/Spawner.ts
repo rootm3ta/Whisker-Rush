@@ -1,14 +1,18 @@
 import { Rng } from '../core/Rng';
 import { LANES } from '../data/runner';
-import { LOOT, LOOT_MAPLE_LANE, RARITIES, RARITY_DISTANCE_BONUS, SOCK_ITEM, COIN, type Rarity } from '../data/pickups';
-import { OBSTACLES, OBSTACLE_COLORS } from '../data/obstacles';
-import { PATTERNS, type Pattern } from '../data/patterns';
+import { LOOT, LOOT_ITEMS, RARITIES, RARITY_DISTANCE_BONUS, SOCK_ITEM, COIN, type Rarity } from '../data/pickups';
+import { OBSTACLES } from '../data/obstacles';
+import type { Pattern } from '../data/patterns';
+import { CITIES, type CityId } from '../data/cities';
 import { SPAWNER } from '../data/spawner';
 import { POWERUPS, POWERUP_IDS, POWERUP_SPAWN } from '../data/powerups';
 import { BELLS } from '../data/secrets';
 import { PickupKind, type Field } from './Field';
 
-const BY_TIER: Pattern[][] = [1, 2, 3].map((t) => PATTERNS.filter((p) => p.tier === t));
+/** Patterns grouped by tier 1..3. */
+export function tiersOf(patterns: readonly Pattern[]): Pattern[][] {
+  return [1, 2, 3].map((t) => patterns.filter((p) => p.tier === t));
+}
 
 /** Tier weights for a distance: last table row whose `from` <= distance. */
 export function tierWeights(distance: number): readonly number[] {
@@ -34,8 +38,7 @@ export function pickTier(distance: number, rng: Rng): 1 | 2 | 3 {
 }
 
 /** Weighted pattern pick inside a tier, avoiding an immediate repeat when possible. */
-export function pickPattern(tier: 1 | 2 | 3, rng: Rng, last: Pattern | null, weightOf: (p: Pattern) => number = (p) => p.weight): Pattern {
-  const list = BY_TIER[tier - 1];
+export function pickPattern(list: readonly Pattern[], rng: Rng, last: Pattern | null, weightOf: (p: Pattern) => number = (p) => p.weight): Pattern {
   for (let attempt = 0; attempt < 4; attempt++) {
     const p = list[weightedIndex(list.map(weightOf), rng.next())];
     if (p !== last || list.length === 1) return p;
@@ -50,11 +53,13 @@ export function rollRarity(rng: Rng, distance: number, luck = 1): Rarity {
   return weightedIndex(w, rng.next()) as Rarity;
 }
 
-export function rollLootItem(rng: Rng, distance: number, luck = 1): number {
-  const rarity = rollRarity(rng, distance, luck);
-  const items = LOOT_MAPLE_LANE.filter((i) => i.rarity === rarity);
+/** A loot item from this city's set (falls back to any city if the rarity is missing there). */
+export function rollLootItem(rng: Rng, distance: number, luck = 1, city: string = 'mapleLane', minRarity = 0): number {
+  const rarity = Math.max(minRarity, rollRarity(rng, distance, luck));
+  let items = LOOT_ITEMS.filter((i) => i.rarity === rarity && i.city === city);
+  if (items.length === 0) items = LOOT_ITEMS.filter((i) => i.rarity === rarity);
   const item = rng.pick(items);
-  return LOOT_MAPLE_LANE.indexOf(item);
+  return LOOT_ITEMS.indexOf(item);
 }
 
 const POWER_WEIGHTS = POWERUP_IDS.map((id) => POWERUPS[id].weight);
@@ -79,6 +84,8 @@ export class Spawner {
   catDoorMul = 1;
   private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
   private nextS: number = SPAWNER.firstAt;
+  private tiers: Pattern[][] = tiersOf(CITIES.mapleLane.patterns);
+  city: CityId = 'mapleLane';
   private last: Pattern | null = null;
   private readonly rng = new Rng(SPAWNER.seed);
 
@@ -89,6 +96,12 @@ export class Spawner {
     this.nextS = SPAWNER.firstAt;
     this.last = null;
     this.paused = false;
+  }
+
+  /** Switches the pattern library and loot set to a city. */
+  setCity(city: CityId): void {
+    this.city = city;
+    this.tiers = tiersOf(CITIES[city].patterns);
   }
 
   /** Resume placing patterns from `s` onward. */
@@ -104,7 +117,7 @@ export class Spawner {
     }
     while (this.nextS < distance + SPAWNER.aheadM) {
       const tier = pickTier(this.nextS, this.rng);
-      const p = pickPattern(tier, this.rng, this.last, this.weightOf);
+      const p = pickPattern(this.tiers[tier - 1], this.rng, this.last, this.weightOf);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
       this.last = p;
       const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
@@ -127,7 +140,7 @@ export class Spawner {
       const letter = this.hooks?.nextLetter(s) ?? -1;
       if (letter >= 0) this.field.addPickup(PickupKind.Letter, letter, x, s, y);
     } else if (this.gapLoot) {
-      this.field.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck), x, s, LOOT.y);
+      this.field.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s, LOOT.y);
     }
   }
 
@@ -140,7 +153,8 @@ export class Spawner {
       const s = s0 + e.z;
       switch (e.t) {
         case 'o': {
-          const color = e.id === 'car' ? rng.pick(OBSTACLE_COLORS.cars) : 0xffffff;
+          const tints = OBSTACLES[e.id].tints;
+          const color = tints ? rng.pick(tints) : 0xffffff;
           f.addObstacle(e.id, x, s, e.len ?? OBSTACLES[e.id].length, color);
           break;
         }
@@ -155,7 +169,7 @@ export class Spawner {
           break;
         case 'loot':
           if (rng.next() < LOOT.fishBoneChance) f.addPickup(PickupKind.FishBone, 0, x, s, e.y);
-          else f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck), x, s, e.y);
+          else f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s, e.y);
           break;
         case 'bell': {
           const id = this.hooks?.nextBell() ?? -1;

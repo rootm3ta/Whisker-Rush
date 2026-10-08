@@ -1,17 +1,15 @@
 import * as Tone from 'tone';
 import { Rng } from '../core/Rng';
 import { MUSIC, SFX } from '../data/audio';
+import type { MusicTheme } from '../data/cities';
 
 export type SfxId = keyof typeof SFX.volumes;
 export type MusicMode = 'off' | 'home' | 'run';
 
-const M = MUSIC.mapleLane;
-const CHORDS: string[][] = M.chords.map((c) => [...c]);
-const CHORD_TOPS: string[][] = CHORDS.map((c) => c.slice(1));
-
 /**
- * Maple Lane "cozy lo-fi bounce": chords, drums, bass and a generated pentatonic lead.
+ * City music from a MusicTheme: chords, drums, bass and a generated pentatonic lead.
  * Stems fade in with speed; a lowpass closes during power-ups; Catnip detunes everything up.
+ * Maple Lane is lo-fi FM piano; Rome swings with accordion and tremolo mandolin.
  */
 class MusicDirector {
   private readonly master = new Tone.Volume(MUSIC.volumes.master);
@@ -22,19 +20,28 @@ class MusicDirector {
     bass: new Tone.Volume(-60),
     lead: new Tone.Volume(-60),
   };
-  private readonly chords = new Tone.PolySynth(Tone.FMSynth, {
+  private readonly piano = new Tone.PolySynth(Tone.FMSynth, {
     harmonicity: 2,
     modulationIndex: 1.5,
     envelope: { attack: 0.02, decay: 0.6, sustain: 0.25, release: 1.2 },
     modulationEnvelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
   });
+  private readonly accordion = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'fatsawtooth', count: 2, spread: 14 },
+    envelope: { attack: 0.04, decay: 0.2, sustain: 0.7, release: 0.25 },
+  });
+  private readonly vibrato = new Tone.Vibrato(5.5, 0.08);
   private readonly kick = new Tone.MembraneSynth({ pitchDecay: 0.03, octaves: 5, envelope: { attack: 0.001, decay: 0.3, sustain: 0 } });
   private readonly snare = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.001, decay: 0.14, sustain: 0 } });
   private readonly hat = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.035, sustain: 0 } });
   private readonly hatFilter = new Tone.Filter(7000, 'highpass');
   private readonly bass = new Tone.MonoSynth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.2 }, filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, baseFrequency: 200, octaves: 2 } });
-  private readonly lead = new Tone.Synth({ oscillator: { type: 'square8' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0.2, release: 0.25 } });
-  private readonly melody: (string | null)[] = [];
+  private readonly square = new Tone.Synth({ oscillator: { type: 'square8' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0.2, release: 0.25 } });
+  private readonly mandolin = new Tone.PluckSynth({ attackNoise: 1.2, dampening: 4200, resonance: 0.93 });
+  private theme: MusicTheme | null = null;
+  private chordsList: string[][] = [];
+  private chordTops: string[][] = [];
+  private melody: (string | null)[] = [];
   private step = 0;
   private mode: MusicMode = 'off';
   private readonly loop: Tone.Loop;
@@ -43,35 +50,73 @@ class MusicDirector {
     this.master.toDestination();
     this.filter.connect(this.master);
     for (const v of Object.values(this.vol)) v.connect(this.filter);
-    this.chords.connect(this.vol.chords);
+    this.piano.connect(this.vol.chords);
+    this.accordion.connect(this.vibrato);
+    this.vibrato.connect(this.vol.chords);
     this.kick.connect(this.vol.drums);
     this.snare.connect(this.vol.drums);
     this.hat.connect(this.hatFilter);
     this.hatFilter.connect(this.vol.drums);
     this.bass.connect(this.vol.bass);
-    this.lead.connect(this.vol.lead);
-    // A 4-bar pentatonic melody, seeded so it is the same every session.
-    const rng = new Rng(M.seed);
-    for (let i = 0; i < 64; i++) this.melody.push(i % 2 === 0 && rng.next() < 0.6 ? rng.pick(M.leadScale) : null);
+    this.square.connect(this.vol.lead);
+    this.mandolin.connect(this.vol.lead);
     this.loop = new Tone.Loop((time) => this.tick(time), '16n');
   }
 
+  setTheme(theme: MusicTheme): void {
+    if (theme === this.theme) return;
+    this.theme = theme;
+    this.chordsList = theme.chords.map((c) => [...c]);
+    this.chordTops = this.chordsList.map((c) => c.slice(1));
+    // A 4-bar pentatonic melody, seeded so a city always sounds like itself.
+    const rng = new Rng(theme.seed);
+    this.melody = [];
+    for (let i = 0; i < 64; i++) this.melody.push(i % 2 === 0 && rng.next() < 0.6 ? rng.pick(theme.leadScale) : null);
+    const t = Tone.getTransport();
+    t.swing = theme.swing;
+    t.swingSubdivision = '8n';
+    if (this.mode !== 'off') t.bpm.rampTo(this.mode === 'home' ? theme.homeBpm : theme.bpm, 0.5);
+  }
+
   private tick(time: number): void {
+    const th = this.theme;
+    if (!th) return;
     const s = this.step++;
-    const bar = Math.floor(s / 16) % 4;
+    const bar = Math.floor(s / 16) % this.chordsList.length;
     const beat = s % 16;
-    if (beat === 0) this.chords.triggerAttackRelease(CHORDS[bar], '1m', time, 0.5);
-    if (beat === 10) this.chords.triggerAttackRelease(CHORD_TOPS[bar], '8n', time, 0.25);
+    const pad = th.pad === 'accordion' ? this.accordion : this.piano;
+    const swing = th.groove === 'swing';
+    if (swing) {
+      // Oom-pah: bass on the beat, accordion stabs on the off-beats.
+      if (beat === 4 || beat === 12) pad.triggerAttackRelease(this.chordsList[bar], '8n', time, 0.45);
+    } else {
+      if (beat === 0) pad.triggerAttackRelease(this.chordsList[bar], '1m', time, 0.5);
+      if (beat === 10) pad.triggerAttackRelease(this.chordTops[bar], '8n', time, 0.25);
+    }
     if (this.mode === 'home') {
       if (beat % 4 === 2) this.hat.triggerAttackRelease('32n', time, 0.25);
       return;
     }
-    if (beat === 0 || beat === 7 || beat === 10) this.kick.triggerAttackRelease('C1', '8n', time, 0.8);
-    if (beat === 4 || beat === 12) this.snare.triggerAttackRelease('16n', time, 0.6);
-    if (beat % 2 === 0) this.hat.triggerAttackRelease('32n', time + (beat % 4 === 2 ? 0.03 : 0), beat % 4 === 0 ? 0.5 : 0.3);
-    if (beat === 0 || beat === 6 || beat === 8 || beat === 14) this.bass.triggerAttackRelease(M.bass[bar], '8n', time, 0.8);
-    const note = this.melody[(s % 64)];
-    if (note) this.lead.triggerAttackRelease(note, '16n', time, 0.6);
+    if (swing) {
+      if (beat === 0 || beat === 8) this.kick.triggerAttackRelease('C1', '8n', time, 0.7);
+      if (beat === 4 || beat === 12) this.snare.triggerAttackRelease('32n', time, 0.35);
+      if (beat % 4 === 2) this.hat.triggerAttackRelease('32n', time, 0.35);
+      if (beat === 0 || beat === 8) this.bass.triggerAttackRelease(th.bass[bar], '8n', time, 0.8);
+    } else {
+      if (beat === 0 || beat === 7 || beat === 10) this.kick.triggerAttackRelease('C1', '8n', time, 0.8);
+      if (beat === 4 || beat === 12) this.snare.triggerAttackRelease('16n', time, 0.6);
+      if (beat % 2 === 0) this.hat.triggerAttackRelease('32n', time, beat % 4 === 0 ? 0.5 : 0.3);
+      if (beat === 0 || beat === 6 || beat === 8 || beat === 14) this.bass.triggerAttackRelease(th.bass[bar], '8n', time, 0.8);
+    }
+    const note = this.melody[s % 64];
+    if (!note) return;
+    if (th.lead === 'mandolin') {
+      // Tremolo picking: quick repeated plucks.
+      const step = Tone.Time('32n').toSeconds();
+      for (let k = 0; k < 3; k++) this.mandolin.triggerAttack(note, time + k * step);
+    } else {
+      this.square.triggerAttackRelease(note, '16n', time, 0.6);
+    }
   }
 
   setMode(mode: MusicMode): void {
@@ -82,7 +127,8 @@ class MusicDirector {
       this.master.volume.rampTo(-60, 0.4);
       return;
     }
-    t.bpm.rampTo(mode === 'home' ? M.homeBpm : M.bpm, 0.5);
+    const th = this.theme;
+    if (th) t.bpm.rampTo(mode === 'home' ? th.homeBpm : th.bpm, 0.5);
     this.master.volume.rampTo(MUSIC.volumes.master, 0.4);
     if (t.state !== 'started') {
       this.loop.start(0);
@@ -101,9 +147,10 @@ class MusicDirector {
     this.vol.lead.volume.rampTo(run && speed >= S.lead ? MUSIC.volumes.lead : -60, f);
     this.filter.frequency.rampTo(powerUp ? MUSIC.filter.powerUp : MUSIC.filter.open, 0.4);
     const cents = catnip ? MUSIC.catnipDetune : 0;
-    this.chords.set({ detune: cents });
+    this.piano.set({ detune: cents });
+    this.accordion.set({ detune: cents });
     this.bass.detune.rampTo(cents, 0.3);
-    this.lead.detune.rampTo(cents, 0.3);
+    this.square.detune.rampTo(cents, 0.3);
   }
 }
 

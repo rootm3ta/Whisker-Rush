@@ -60,7 +60,10 @@ import { Tutorial } from '../gameplay/Tutorial';
 import { TutorialHud } from '../ui/TutorialHud';
 import { TUTORIAL } from '../data/tutorial';
 import { claimFreeHat, freeHatPending, nextOnboarding } from '../meta/Onboarding';
-import { applyEnvironment } from '../world/Environment';
+import { Environment } from '../world/Environment';
+import { KITS } from '../procgen/cityKits';
+import { MapScreen } from '../ui/screens/MapScreen';
+import type { CityId } from '../data/cities';
 import { Track } from '../world/Track';
 import { EventBus } from './EventBus';
 import type { GameEvents } from './events';
@@ -80,7 +83,10 @@ export class Game {
   private readonly run = new RunSession(this.bus);
   private readonly save = new Save(new LocalStorageAdapter());
   private readonly ads: IAds;
-  private readonly track: Track;
+  private track: Track;
+  private readonly env: Environment;
+  private city: CityId = 'mapleLane';
+  private readonly map: MapScreen;
   private readonly fieldView = new FieldView();
   private readonly cat: Cat;
   private readonly pack = new DogPack();
@@ -89,8 +95,6 @@ export class Game {
   private readonly bossView = new BossView();
   private readonly powerHud: PowerHud;
   private freshRun = false;
-  private readonly fogBase = new THREE.Color();
-  private skyBase: THREE.Texture | THREE.Color | null = null;
   private readonly alleyColor = new THREE.Color(CAT_DOOR.fog);
   private readonly input: Input;
   private readonly overlay: Overlay;
@@ -153,14 +157,11 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(this.renderer.domElement);
 
-    const palette = CITIES.mapleLane.palette;
-    applyEnvironment(this.scene, palette);
-    this.track = new Track(palette);
+    this.env = new Environment(this.scene, CITIES.mapleLane.palette);
+    this.track = new Track(KITS.mapleLane);
     this.cat = new Cat(this.bus);
     this.scene.add(this.track.root, this.fieldView.root, this.cat.holder, this.cat.shadow, this.pack.root, this.fx.root);
     this.scene.add(this.powerFx.root, this.bossView.root);
-    this.fogBase.copy((this.scene.fog as THREE.Fog).color);
-    this.skyBase = this.scene.background as THREE.Texture;
 
     this.ads = new MockAds(host);
     this.overlay = new Overlay(host);
@@ -179,6 +180,7 @@ export class Game {
     this.juice = new JuiceFx(this.bus);
     this.scene.add(this.juice.particles.points);
     this.audio = new Audio(this.bus);
+    this.audio.setTheme(CITIES.mapleLane.music);
     this.postFx = new PostFx(this.renderer, this.scene, this.rig.camera);
     this.fly = new FlyFx(host);
     this.home = new HomeScene(new EventBus<GameEvents>());
@@ -199,6 +201,7 @@ export class Game {
       sound: (id) => this.audio.play(id),
     };
     this.market = new MarketScreen(ctx);
+    this.map = new MapScreen(ctx, () => this.prepareRun());
     this.screens = {
       upgrades: new UpgradesScreen(ctx),
       wardrobe: new WardrobeScreen(ctx, (on) => {
@@ -368,7 +371,9 @@ export class Game {
   /** Resets the run session, track and HUD for a fresh run (no state change). */
   private prepareRun(): void {
     const p = this.save.profile;
-    this.run.reset(undefined, p, Date.now(), computeRunConfig(p));
+    const config = computeRunConfig(p);
+    this.setCity(config.city);
+    this.run.reset(undefined, p, Date.now(), config);
     this.track.reset();
     this.input.buffer.clear();
     this.hud.reset();
@@ -525,14 +530,30 @@ export class Game {
 
   /** Secret Alley: dusky violet fog and sky while inside. */
   private setAlleyLook(on: boolean): void {
-    const fog = this.scene.fog as THREE.Fog;
     if (on) {
-      fog.color.copy(this.alleyColor);
+      this.env.fog.color.copy(this.alleyColor);
       this.scene.background = this.alleyColor;
     } else {
-      fog.color.copy(this.fogBase);
-      this.scene.background = this.skyBase;
+      this.env.setPalette(CITIES[this.city].palette);
     }
+  }
+
+  /**
+   * Switches the street, sky, local dogs, boss vehicle and music to a city.
+   * Everything comes from the city's data file and kit.
+   */
+  private setCity(id: CityId): void {
+    if (id === this.city) return;
+    this.city = id;
+    const c = CITIES[id];
+    this.scene.remove(this.track.root);
+    this.track.dispose();
+    this.track = new Track(KITS[id]);
+    this.scene.add(this.track.root);
+    this.env.setPalette(c.palette);
+    this.pack.setPups(c.dogs.pups[0], c.dogs.rush);
+    this.bossView.setVehicle(KITS[id], c.boss.riderY, c.boss.riderZ);
+    this.audio.setTheme(c.music);
   }
 
   private useAbility(): void {
@@ -712,7 +733,7 @@ export class Game {
         this.market.open();
         break;
       case 'map':
-        popup(this.host, 'World Tour', ['Rome is packing its bags.', 'The map opens in the next update.']);
+        this.map.open();
         break;
       case 'miso':
         this.homeHud.say(this.home.poke(this.pokes++), x, y - 20);

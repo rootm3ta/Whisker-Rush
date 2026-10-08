@@ -166,7 +166,7 @@ describe('secrets', () => {
       run.field.addPickup(PickupKind.Bell, id, 0, run.runner.distance + 3, 0.7);
       steps(run, 20);
     }
-    expect(profile.bells.length).toBe(BELLS.perCity);
+    expect(profile.bellsByCity.mapleLane?.length).toBe(BELLS.perCity);
     expect(profile.goldenCollar).toBe(true);
     expect(run.secrets.coinBonus).toBeCloseTo(1 + BELLS.coinBonus);
   });

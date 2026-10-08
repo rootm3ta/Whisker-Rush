@@ -1,6 +1,7 @@
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import type { MusicMode, SfxId, ToneAudio } from './ToneAudio';
+import type { MusicTheme } from '../data/cities';
 
 /**
  * Audio front door. Tone.js loads lazily on the first user gesture (browsers require it),
@@ -11,6 +12,7 @@ export class Audio {
   private tone: ToneAudio | null = null;
   private loading = false;
   private mode: MusicMode = 'off';
+  private theme: MusicTheme | null = null;
   private musicOn = true;
   private sfxOn = true;
   private streak = 0;
@@ -53,6 +55,7 @@ export class Audio {
       .then((t) => {
         this.tone = t;
         t.sfx.setEnabled(this.sfxOn);
+        if (this.theme) t.music.setTheme(this.theme);
         const mode = this.mode;
         this.mode = 'off';
         this.setMode(mode);
@@ -75,6 +78,12 @@ export class Audio {
     const target = this.musicOn ? mode : 'off';
     this.mode = mode;
     this.tone?.music.setMode(target);
+  }
+
+  /** The city's music theme (applies now, or as soon as audio loads). */
+  setTheme(theme: MusicTheme): void {
+    this.theme = theme;
+    this.tone?.music.setTheme(theme);
   }
 
   setStems(speed: number, powerUp: boolean, catnip: boolean): void {

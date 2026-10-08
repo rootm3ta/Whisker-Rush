@@ -1,6 +1,6 @@
 import { Rng } from '../core/Rng';
 import { CRATE, LOGIN, MARKET, SATCHEL_LEVELS, SECRET_STOCK, UPGRADES, type UpgradeId } from '../data/economy';
-import { LOOT_MAPLE_LANE } from '../data/pickups';
+import { LOOT_ITEMS } from '../data/pickups';
 import { seedOf } from './Time';
 import type { Profile } from './Save';
 
@@ -26,7 +26,7 @@ export interface BoardEntry {
 /** Daily price board: 3 hot items (x2..x3) and 2 cold items (x0.5), seeded by the local day. */
 export function dailyBoard(day: number): BoardEntry[] {
   const rng = new Rng(seedOf(day, 1));
-  const idx = LOOT_MAPLE_LANE.map((_, i) => i);
+  const idx = LOOT_ITEMS.map((_, i) => i);
   for (let i = idx.length - 1; i > 0; i--) {
     const j = rng.int(0, i + 1);
     [idx[i], idx[j]] = [idx[j], idx[i]];
@@ -47,7 +47,7 @@ export function boardMul(board: readonly BoardEntry[], item: number): number {
 
 /** Coins for one item today. */
 export function sellPrice(item: number, board: readonly BoardEntry[], sellMul = 1, haggle = 1): number {
-  return Math.max(1, Math.round(LOOT_MAPLE_LANE[item].value * boardMul(board, item) * sellMul * haggle));
+  return Math.max(1, Math.round(LOOT_ITEMS[item].value * boardMul(board, item) * sellMul * haggle));
 }
 
 /** Haggle meter: needle position in [-1, 1] -> price bonus (0 when outside every zone). */

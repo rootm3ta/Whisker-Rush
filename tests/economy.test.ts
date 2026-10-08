@@ -3,7 +3,7 @@ import { Rng } from '../src/core/Rng';
 import { ACCESSORIES, SLOTS } from '../src/data/accessories';
 import { CATS, CAT_IDS } from '../src/data/cats';
 import { COST_LADDER, LOGIN, MARKET, MISSIONS, PASS, SATCHEL_LEVELS, SETS, UPGRADES, UPGRADE_IDS } from '../src/data/economy';
-import { LOOT_MAPLE_LANE } from '../src/data/pickups';
+import { LOOT_ITEMS } from '../src/data/pickups';
 import { TOM_LINES } from '../src/data/tom';
 import { claimLogin, loginState } from '../src/meta/Calendar';
 import {
@@ -79,7 +79,7 @@ describe('market', () => {
   it('sell prices apply board, passive and haggle', () => {
     const b = dailyBoard(5);
     const hot = b[0];
-    const v = LOOT_MAPLE_LANE[hot.item].value;
+    const v = LOOT_ITEMS[hot.item].value;
     expect(sellPrice(hot.item, b)).toBe(Math.round(v * hot.mul));
     expect(sellPrice(hot.item, b, 1, 1.5)).toBe(Math.round(v * hot.mul * 1.5));
     expect(boardMul(b, 999)).toBe(1);
@@ -110,7 +110,7 @@ describe('market', () => {
     const p = defaultProfile();
     addToStash(p, new Array(60).fill(itemIndex('bottleCap')));
     const coins = addToStash(p, [itemIndex('silverBell')]);
-    expect(coins).toBe(LOOT_MAPLE_LANE[itemIndex('silverBell')].value);
+    expect(coins).toBe(LOOT_ITEMS[itemIndex('silverBell')].value);
   });
 
   it('collection sets trade for their reward once', () => {

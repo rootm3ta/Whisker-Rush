@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { CityPalette } from '../data/cities';
+import type { MAPLE_PALETTE } from '../data/city/mapleLane';
+type CityPalette = typeof MAPLE_PALETTE;
 import { LANES } from '../data/runner';
 import { TRACK as T } from '../data/track';
 import { merge, paint, strip } from './geo';

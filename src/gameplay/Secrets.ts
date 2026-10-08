@@ -2,15 +2,16 @@ import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import { Rng } from '../core/Rng';
 import { LANES } from '../data/runner';
-import { LOOT_MAPLE_LANE, type Rarity } from '../data/pickups';
+import type { Rarity } from '../data/pickups';
 import { POWERUPS, POWERUP_IDS, type PowerUpId } from '../data/powerups';
 import { BELLS, CAT_DOOR, DAILY_HUNT, MYSTERY_FISH } from '../data/secrets';
 import type { Profile } from '../meta/Save';
+import type { CityId } from '../data/cities';
 import { PickupKind, type Field } from './Field';
 import type { PowerUps } from './PowerUps';
 import type { Runner } from './Runner';
 import type { Score } from './Score';
-import { rollRarity, weightedIndex } from './Spawner';
+import { rollLootItem, weightedIndex } from './Spawner';
 
 export function dayNumber(now: number): number {
   return Math.floor(now / 86_400_000);
@@ -20,12 +21,9 @@ export function huntWord(day: number): string {
   return DAILY_HUNT.words[((day % DAILY_HUNT.words.length) + DAILY_HUNT.words.length) % DAILY_HUNT.words.length];
 }
 
-/** Rolls a loot item index of at least `min` rarity. */
-export function rollLootAtLeast(rng: Rng, distance: number, min: Rarity): number {
-  let rarity = rollRarity(rng, distance);
-  if (rarity < min) rarity = min;
-  const items = LOOT_MAPLE_LANE.filter((i) => i.rarity === rarity);
-  return LOOT_MAPLE_LANE.indexOf(rng.pick(items));
+/** Rolls a loot item index of at least `min` rarity from a city's set. */
+export function rollLootAtLeast(rng: Rng, distance: number, min: Rarity, city = 'mapleLane'): number {
+  return rollLootItem(rng, distance, 1, city, min);
 }
 
 const SPAWNABLE: PowerUpId[] = POWERUP_IDS.filter((id) => POWERUPS[id].weight > 0);
@@ -48,12 +46,22 @@ export class Secrets {
     return this.alleyLeft > 0;
   }
 
-  get bellsFound(): number {
-    return this.profile?.bells.length ?? 0;
+  /** City the run is in (bells are per city). */
+  city: CityId = 'mapleLane';
+
+  private bells(): number[] {
+    const p = this.profile;
+    if (!p) return [];
+    return (p.bellsByCity[this.city] ??= []);
   }
 
-  reset(profile: Profile | null, now: number): void {
+  get bellsFound(): number {
+    return this.bells().length;
+  }
+
+  reset(profile: Profile | null, now: number, city: CityId = 'mapleLane'): void {
     this.profile = profile;
+    this.city = city;
     this.alleyLeft = 0;
     this.loafLeft = 0;
     this.bellsSpawned.clear();
@@ -70,7 +78,7 @@ export class Secrets {
 
   /** Next bell id to place in a slot, or -1. */
   nextBell(): number {
-    const found = this.profile?.bells ?? [];
+    const found = this.bells();
     for (let id = 0; id < BELLS.perCity; id++) {
       if (!found.includes(id) && !this.bellsSpawned.has(id)) return id;
     }
@@ -96,10 +104,11 @@ export class Secrets {
 
   collectBell(id: number): void {
     const p = this.profile;
-    if (!p || p.bells.includes(id)) return;
-    p.bells.push(id);
+    const bells = this.bells();
+    if (!p || bells.includes(id)) return;
+    bells.push(id);
     this.bus.emit('bell', id);
-    if (p.bells.length >= BELLS.perCity && !p.goldenCollar) {
+    if (bells.length >= BELLS.perCity && !p.goldenCollar) {
       p.goldenCollar = true;
       this.bus.emit('allBells', 0);
     }
@@ -155,7 +164,7 @@ export class Secrets {
     if (this.lootT <= 0 && this.alleyLeft > 1.5) {
       this.lootT = CAT_DOOR.lootEvery;
       const lane = this.rng.int(-1, 2);
-      field.addPickup(PickupKind.Loot, rollLootAtLeast(this.rng, r.distance, CAT_DOOR.minRarity as Rarity), lane * LANES.width, ahead + 1, 0.9);
+      field.addPickup(PickupKind.Loot, rollLootAtLeast(this.rng, r.distance, CAT_DOOR.minRarity as Rarity, this.city), lane * LANES.width, ahead + 1, 0.9);
     }
     if (this.alleyLeft <= 0) {
       this.alleyLeft = 0;
