@@ -14,6 +14,8 @@ export interface GameEvents {
   zoneChange: number;
   /** Payload: index into WARN_SOUNDS (a hazard ahead announced itself). */
   hazardWarn: number;
+  /** Street Pals arrived (Tbilisi). */
+  streetPal: number;
   /** Payload: chain index (1..3). */
   wallKick: number;
   grindStart: number;

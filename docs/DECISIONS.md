@@ -149,3 +149,10 @@ One line per judgment call.
 - S5: Tokyo pups: the Akita lunges (and shoves 1.5x further), the Shiba runs the Pack Rush with side-step feints. Bento Box = Yarn Magnet plus 3 loot items dropped ahead. Cat Door opens into the "Cat Cafe".
 - S5: Shop and neon names are invented Japanese words (ramen, karaoke, kissa, izakaya, books...), no brands; the lattice tower is generic, not a landmark replica.
 - S5: Postcard fragments count per city when a run ends; the 5th unlocks the city's comic panel (the fragment still sells).
+- S6: Tbilisi unlocks at 8000 m best, 60,000 coins or 110 Fish Bones. Signs use real Mkhedruli words (bread, wine, pharmacy, hello, khinkali, churchkhela, bath, supra, cafe, Tbilisi), rendered with a Noto Sans Georgian subset.
+- S6: Street Pals: from 350 m, a roll every 600 to 1100 m (70%) sends two ear-tagged street dogs to trot beside Miso; Duke's pack is held 60% further back for 5 s and no Pack Rush starts meanwhile. Pure logic in `gameplay/StreetPals.ts`, tested.
+- S6: The cable car gondola is a Fish Rocket variant ("Cable Car") placed by a new `power` pattern entry in Abanotubani; PowerFx swaps the rocket for a gondola on its cable in cities with that variant. Cities can now have several power-up variants (Supra Feast = Catnip with a toast).
+- S6: Old Town slopes are a steeper curved-world down bend (`curveDown` per district) with barrels rolling toward you; the Bridge of Peace district bends the road sideways (`curveSide`) under a steel-and-glass canopy.
+- S6: Both Tbilisi pups are Nagazi (slow, big, they block a lane on the Pack Rush); the tagged street dogs are allies, never chasers.
+- S6: Seasonal events live in data/events.ts. Tbilisoba (20 to 31 October): grape garlands and flags across Tbilisi streets and a 100% chance of a second loot item on every loot slot. `?festival=1` forces it.
+- S6: Fixed a Tone.js "start time" error during the home-to-run crossfade (the lo-fi layer and the run groove both hit the bass on beat one).

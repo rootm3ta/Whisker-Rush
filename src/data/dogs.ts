@@ -1,6 +1,7 @@
 import { MAPLE_LANE } from './city/mapleLane';
 import { ROME } from './city/rome';
 import { TOKYO } from './city/tokyo';
+import { TBILISI } from './city/tbilisi';
 /** Body plan used by the smooth procedural builder. */
 export type DogBuild = 'bulldog' | 'dachshund' | 'terrier' | 'greyhound' | 'spinone' | 'shiba' | 'akita' | 'shepherd' | 'street';
 
@@ -86,7 +87,7 @@ export const BREEDS: Record<string, DogDef> = {
 };
 
 /** Duke is everywhere; each city file adds its local pups. */
-export const DOGS: Record<string, DogDef> = { duke: DUKE, ...MAPLE_LANE.dogs.defs, ...ROME.dogs.defs, ...TOKYO.dogs.defs, ...BREEDS };
+export const DOGS: Record<string, DogDef> = { duke: DUKE, ...MAPLE_LANE.dogs.defs, ...ROME.dogs.defs, ...TOKYO.dogs.defs, ...TBILISI.dogs.defs, ...BREEDS };
 
 export const DOG_ACCESSORY_COLORS = {
   lens: 0x1d1d22,

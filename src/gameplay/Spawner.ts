@@ -80,6 +80,8 @@ export class Spawner {
   luck = 1;
   /** First run: every gap without a power-up gets a loot item. */
   gapLoot = false;
+  /** Festivals: chance of a second loot item next to each pattern loot slot (2 = always). */
+  lootMul = 1;
   /** Noir's passive: cat door patterns appear more often. */
   catDoorMul = 1;
   private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
@@ -187,6 +189,7 @@ export class Spawner {
         case 'loot':
           if (rng.next() < LOOT.fishBoneChance) f.addPickup(PickupKind.FishBone, 0, x, s, e.y);
           else f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s, e.y);
+          if (rng.next() < this.lootMul - 1) f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s + 1.6, e.y);
           break;
         case 'bell': {
           const id = this.hooks?.nextBell() ?? -1;
@@ -196,6 +199,9 @@ export class Spawner {
           }
           break;
         }
+        case 'power':
+          f.addPickup(PickupKind.PowerUp, POWERUP_IDS.indexOf(e.id), x, s, e.y);
+          break;
         case 'line': {
           f.addObstacle('clothesline', x, s, e.len, 0xffffff);
           const top = OBSTACLES.clothesline.top ?? 0;

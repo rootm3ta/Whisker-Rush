@@ -18,6 +18,8 @@ export interface LayoutCtx {
   index: number;
   /** District index of this chunk (0 if the city has none). */
   district: number;
+  /** A seasonal festival is on (decorations). */
+  festival: boolean;
   put(key: string, x: number, y: number, z: number, sx: number, sy: number, sz: number, ry: number, color?: number): void;
 }
 

@@ -88,7 +88,8 @@ export class MapScreen {
     if (c.outfitSet) extras.push(`Outfit set <b>${esc(c.outfitSet.name)}</b> (${c.outfitSet.pieces.map((a) => esc(ACCESSORIES[a].name)).join(', ')}): +${Math.round(c.outfitSet.bonus * 100)}% coins here`);
     const set = SETS.find((s) => 'city' in s && s.city === id);
     if (set && 'cityBonus' in set) extras.push(`Collection <b>${esc(set.name)}</b>: +${Math.round(set.cityBonus * 100)}% coins here`);
-    if (c.powerVariant) extras.push(`Local power-up: <b>${esc(c.powerVariant.name)}</b>`);
+    for (const v of c.powerVariants ?? []) extras.push(`Local power-up: <b>${esc(v.name)}</b>`);
+    if (c.streetPals) extras.push('Friendly <b>Street Pals</b> sometimes hold Duke back');
     if (extras.length) html += `<p class="wr-note">${extras.join(' · ')}</p>`;
     if (p.city === id) html += `<p class="wr-note"><b>You are here.</b> Your runs happen in ${esc(c.name)}.</p>`;
     else if (isUnlocked(p, id)) html += `<button class="wr-btn wr-btn-main" data-travel="${id}">Travel to ${esc(c.name)}</button>`;

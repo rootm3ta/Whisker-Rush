@@ -23,6 +23,8 @@ import { ScoreKeeper } from './ScoreKeeper';
 import { rollLootAtLeast, Secrets } from './Secrets';
 import { Spawner } from './Spawner';
 import { Hazards } from './Hazards';
+import { StreetPals } from './StreetPals';
+import { STREET_PALS } from '../data/streetPals';
 import { rollLootItem } from './Spawner';
 import { LANES } from '../data/runner';
 import { LOOT, LOOT_ITEMS } from '../data/pickups';
@@ -50,6 +52,7 @@ export class RunSession {
   readonly secrets: Secrets;
   readonly boss: Boss;
   readonly hazards = new Hazards();
+  readonly pals = new StreetPals();
   /** True when the last crash was a catch (second stumble), false for a head-on crash. */
   caught = false;
   readonly stats: RunStatsCollector;
@@ -93,6 +96,7 @@ export class RunSession {
   reset(seed?: number, profile: Profile | null = null, now = Date.now(), config: RunConfig = defaultRunConfig()): void {
     this.config = config;
     this.spawner.setCity(config.city);
+    this.pals.reset(!!CITIES[config.city].streetPals);
     this.boss.throwIds = CITIES[config.city].boss.throwIds;
     this.runner.reset();
     this.runner.configure(config.laneSwitchSec, config.jumpHeight, config.coyoteSec, config.maxKicks);
@@ -245,6 +249,12 @@ export class RunSession {
     this.chase.startRush(6, this.runner.lane);
   }
 
+  debugPals(): void {
+    this.pals.arrive();
+    this.chase.palDelay(STREET_PALS.delaySec);
+    this.bus.emit('streetPal', 0);
+  }
+
   debugAlley(): void {
     this.bus.emit('catDoor', 0);
     this.secrets.enterAlley(this.runner, this.field);
@@ -274,6 +284,10 @@ export class RunSession {
     r.step(dt);
     this.collision.step(r, dt);
     if (r.grinding) this.stats.grindMeters += r.distance - r.prevDistance;
+    if (this.pals.step(dt, r.distance)) {
+      this.chase.palDelay(STREET_PALS.delaySec);
+      this.bus.emit('streetPal', 0);
+    }
     if (!this.collision.crashed) this.chase.step(dt, r);
     this.keeper.update(dt, r.distance - r.prevDistance);
     const loaf = this.secrets.stepLoaf(dt);

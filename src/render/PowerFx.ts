@@ -28,6 +28,9 @@ export class PowerFx {
   private readonly box = new THREE.Group();
   private readonly bubble: THREE.Mesh;
   private readonly rocket = new THREE.Group();
+  /** Tbilisi: the Fish Rocket is a cable car gondola gliding on its cable. */
+  private readonly gondola = new THREE.Group();
+  cableCar = false;
   private readonly flame: THREE.Mesh;
   private readonly roomba = new THREE.Group();
   private readonly laser = new THREE.Group();
@@ -96,6 +99,19 @@ export class PowerFx {
     this.flame.position.z = 1.6;
     this.rocket.add(fishBody, fin, this.flame);
     this.rocket.position.y = 0.05;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 1.9), createToonMaterial(0xd9483b));
+    cabin.position.y = 0.55;
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.55, 1.6), createToonMaterial(0xbfe0f0));
+    glass.position.y = 0.85;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 2.0), createToonMaterial(0xfbf6ec));
+    roof.position.y = 1.26;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), createToonMaterial(0x3a3a40));
+    arm.position.y = 1.9;
+    const cable = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 60), createToonMaterial(0x2a2a30));
+    cable.position.y = 2.55;
+    this.gondola.add(cabin, glass, roof, arm, cable);
+    this.gondola.position.y = -0.55;
+    this.onCat.add(this.gondola);
 
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.66, 0.16, 20), createToonMaterial(ROOMBA.color));
     disc.position.y = 0.08;
@@ -156,7 +172,9 @@ export class PowerFx {
       this.bubble.scale.set(w, 2 - w, w);
     }
 
-    this.rocket.visible = pu.isOn('fishRocket');
+    this.rocket.visible = pu.isOn('fishRocket') && !this.cableCar;
+    this.gondola.visible = pu.isOn('fishRocket') && this.cableCar;
+    if (this.gondola.visible) this.gondola.rotation.z = Math.sin(t * 1.3) * 0.05;
     if (this.rocket.visible) this.flame.scale.set(1, 0.8 + 0.4 * Math.abs(Math.sin(t * 30)), 1);
 
     // Roomba under the cat while riding; flies off spinning when it absorbs a crash.

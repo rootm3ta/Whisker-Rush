@@ -4,7 +4,7 @@ import type { Pattern } from '../patterns';
 import type { LootItem } from '../pickups';
 import type { PowerUpId } from '../powerups';
 
-export type CityId = 'mapleLane' | 'rome' | 'tokyo';
+export type CityId = 'mapleLane' | 'rome' | 'tokyo' | 'tbilisi';
 
 /** Colors every city needs for sky, fog, light and the road. Kits may define more. */
 export interface BasePalette {
@@ -54,6 +54,8 @@ export interface DistrictDef {
   night?: boolean;
   /** Road bends sideways here (Tbilisi's Bridge of Peace). Multiplies the curved-world side bend. */
   curveSide?: number;
+  /** Steeper downhill bend (Tbilisi's Old Town slopes). Multiplies the curved-world down bend. */
+  curveDown?: number;
   /** Ambient particles while in this district. */
   particles?: 'petals' | 'steam' | 'leaves';
 }
@@ -87,7 +89,10 @@ export interface CityDef {
   ambience?: readonly ('crossingChime' | 'crowCaw' | 'trainChime' | 'crowd' | 'river' | 'churchBells' | 'horn' | 'cableHum')[];
   /** Secret Alley theme (name stamped on entry and fog colour). */
   alley?: { name: string; fog: number };
-  powerVariant?: PowerVariant;
+  /** City-flavoured power-ups (Bento Box, Supra Feast, Cable Car...). */
+  powerVariants?: readonly PowerVariant[];
+  /** Friendly street dogs that hold the pack back now and then (Tbilisi). */
+  streetPals?: boolean;
   /** Outfit set: wear all pieces in this city for a coin bonus. */
   outfitSet?: { name: string; pieces: readonly string[]; bonus: number };
   /** Loading card illustration (inline SVG) shown when travelling here. */

@@ -156,7 +156,8 @@ class MusicDirector {
       if (beat === 0 || beat === 10) this.softKick.triggerAttackRelease('A1', '8n', time, 0.55);
       if (beat === 4 || beat === 12) this.rim.triggerAttackRelease('32n', time, 0.5);
       if (beat === 15) this.rim.triggerAttackRelease('32n', time, 0.18);
-      if (beat === 0 && th.bass[bar]) this.bass.triggerAttackRelease(th.bass[bar], '2n', time, 0.35);
+      // The run groove owns the bass during the crossfade (one voice, one start time).
+      if (this.mode === 'home' && beat === 0 && th.bass[bar]) this.bass.triggerAttackRelease(th.bass[bar], '2n', time, 0.35);
       if (this.mode === 'home') return;
     }
     if (th.groove === 'citypop') {
@@ -170,7 +171,7 @@ class MusicDirector {
       // Doli hand drum: deep strokes and rim slaps in a rolling dance pattern.
       if (beat === 0 || beat === 6 || beat === 10) this.kick.triggerAttackRelease('D1', '8n', time, 0.75);
       if (beat === 3 || beat === 8 || beat === 12 || beat === 14) this.slap.triggerAttackRelease('32n', time, beat === 12 ? 0.7 : 0.45);
-      if (this.fast && beat % 2 === 1) this.slap.triggerAttackRelease('32n', time, 0.2);
+      if (this.fast && beat % 2 === 1 && beat !== 3) this.slap.triggerAttackRelease('32n', time, 0.2);
       if (beat === 0 || beat === 8) this.bass.triggerAttackRelease(th.bass[bar], '8n', time, 0.7);
     } else if (swing) {
       if (beat === 0 || beat === 8) this.kick.triggerAttackRelease('C1', '8n', time, 0.7);

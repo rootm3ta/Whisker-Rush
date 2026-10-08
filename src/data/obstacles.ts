@@ -1,6 +1,7 @@
 import { MAPLE_LANE } from './city/mapleLane';
 import { ROME } from './city/rome';
 import { TOKYO } from './city/tokyo';
+import { TBILISI } from './city/tbilisi';
 
 /** Obstacle ids are strings: each city file adds its own. Geometry is authored front face at z=0 extending to -length. */
 export type ObstacleId = string;
@@ -53,7 +54,7 @@ const SHARED: Record<string, ObstacleDef> = {
   parcel: { ...base, length: 0.9, halfWidth: 0.9, body: [0, 0.95], lethal: true, capacity: 12 },
 };
 
-export const OBSTACLES: Record<ObstacleId, ObstacleDef> = { ...SHARED, ...MAPLE_LANE.obstacles, ...ROME.obstacles, ...TOKYO.obstacles };
+export const OBSTACLES: Record<ObstacleId, ObstacleDef> = { ...SHARED, ...MAPLE_LANE.obstacles, ...ROME.obstacles, ...TOKYO.obstacles, ...TBILISI.obstacles };
 
 export const OBSTACLE_IDS = Object.keys(OBSTACLES) as ObstacleId[];
 

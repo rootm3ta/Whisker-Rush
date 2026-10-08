@@ -223,7 +223,7 @@ export const TOKYO: CityDef = {
   huntWords: ['NEKO', 'SUSHI', 'RAMEN'],
   ambience: ['crossingChime', 'crowCaw', 'trainChime', 'crowd'],
   alley: { name: 'CAT CAFE!', fog: 0xf3d6c8 },
-  powerVariant: { of: 'magnet', name: 'Bento Box', bonusLoot: 3, sfx: 'pop' },
+  powerVariants: [{ of: 'magnet', name: 'Bento Box', bonusLoot: 3, sfx: 'pop' }],
   outfitSet: { name: 'Tokyo Street', pieces: ['bucketHat', 'hoodie', 'headphones'], bonus: 0.1 },
   card: CARD,
   postcard: {

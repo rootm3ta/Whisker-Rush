@@ -59,8 +59,13 @@ export class Track {
       this.root.add(group);
       this.chunks.push({ group, index: -1, props });
     }
-    this.ctx = { rng: this.rng, length: L, index: 0, district: 0, put: this.put };
+    this.ctx = { rng: this.rng, length: L, index: 0, district: 0, festival: false, put: this.put };
     this.reset();
+  }
+
+  /** Festival decorations on or off (takes effect on the next reset). */
+  setFestival(on: boolean): void {
+    this.ctx.festival = on;
   }
 
   reset(): void {

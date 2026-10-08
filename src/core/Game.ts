@@ -78,6 +78,7 @@ import { CityCard } from '../ui/CityCard';
 import { curveUniforms } from '../render/ToonMaterial';
 import { LOOT_ITEMS } from '../data/pickups';
 import { OBSTACLES } from '../data/obstacles';
+import { activeEvent } from '../data/events';
 import { screenUniforms } from '../procgen/signs';
 import type { BasePalette } from '../data/cities';
 import { EventBus } from './EventBus';
@@ -107,6 +108,8 @@ export class Game {
   /** Debug: start runs in district N (`?district=N`, debug builds and headless checks). */
   private readonly debugDistrict = Number(new URLSearchParams(location.search).get('district') ?? 0) || 0;
   private petalT = 0;
+  /** Seasonal festival running in this city (announced at run start). */
+  private festival = '';
   private readonly cityCard: CityCard;
   private readonly map: MapScreen;
   private readonly fieldView = new FieldView();
@@ -248,7 +251,8 @@ export class Game {
       this.debug.add(sec, 'PACK RUSH', () => this.run.debugRush());
       this.debug.add(sec, 'CAT DOOR', () => this.run.debugAlley());
       this.debug.add(sec, 'BELL', () => this.run.debugBell());
-      if (c.powerVariant) this.debug.add(sec, c.powerVariant.name, () => this.run.activatePowerUp(c.powerVariant!.of));
+      for (const v of c.powerVariants ?? []) this.debug.add(sec, v.name, () => this.run.activatePowerUp(v.of));
+      if (c.streetPals) this.debug.add(sec, 'STREET PALS', () => this.run.debugPals());
       for (const l of c.loot) this.debug.add(sec, `loot:${l.id}`, () => this.run.debugLoot(l.id));
       (c.districts ?? []).forEach((d, i) => this.debug.add(sec, `district:${d.name}`, () => this.applyDistrict(i, true)));
       if (c.postcard) this.debug.add(sec, 'postcard comic', () => this.cityCard.postcard(c.id));
@@ -376,6 +380,7 @@ export class Game {
             this.powerHud.visible = true;
             if (this.freshRun) {
               this.freshRun = false;
+              if (this.festival) this.hud.stamp(`${this.festival}: double loot!`, STAMP_COLORS.loot);
               const inv = this.save.profile.inventory;
               this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec, this.adHeadStartOk());
             }
@@ -460,6 +465,10 @@ export class Game {
     this.district = -1;
     this.applyDistrict(this.debugDistrict % (CITIES[this.city].districts?.length ?? 1), false);
     this.run.reset(undefined, p, Date.now(), config);
+    const fest = activeEvent(this.city, new Date(), new URLSearchParams(location.search).has('festival'));
+    this.run.spawner.lootMul = fest?.lootMul ?? 1;
+    this.festival = fest?.name ?? '';
+    this.track.setFestival(!!fest);
     this.track.reset();
     this.input.buffer.clear();
     this.hud.reset();
@@ -588,8 +597,7 @@ export class Game {
     const stamp = (t: string, c: string = STAMP_COLORS.stunt) => this.hud.stamp(t, c);
     b.on('powerStart', (i) => {
       const id = POWERUP_IDS[i];
-      const v = CITIES[this.city].powerVariant;
-      const variant = v && v.of === id && this.fsm.is('run') ? v : null;
+      const variant = this.fsm.is('run') ? (CITIES[this.city].powerVariants?.find((v) => v.of === id) ?? null) : null;
       stamp((variant ? variant.name : POWERUPS[id].name).toUpperCase() + '!', STAMP_COLORS.loot);
       if (variant?.bonusLoot) this.run.dropLootAhead(variant.bonusLoot);
       if (variant?.sfx) this.audio.play(variant.sfx);
@@ -623,6 +631,10 @@ export class Game {
       this.rig.addShake(0.25);
     });
     b.on('chest', () => stamp(UI_TEXT.chest, STAMP_COLORS.loot));
+    b.on('streetPal', () => {
+      stamp('STREET PALS!', STAMP_COLORS.loot);
+      this.audio.play('bark');
+    });
   }
 
   /** Secret Alley: dusky violet fog and sky while inside. */
@@ -665,6 +677,7 @@ export class Game {
     this.env.setPalette(this.districtPalette());
     this.audio.setNight(!!d?.night);
     curveUniforms.uCurveSide.value = RENDER.curveSide * (d?.curveSide ?? 1);
+    curveUniforms.uCurveDown.value = RENDER.curveDown * (d?.curveDown ?? 1);
     this.districtParticles = d?.particles;
     if (announce && d) this.hud.stamp(d.name, STAMP_COLORS.stunt);
   }
@@ -681,6 +694,7 @@ export class Game {
     this.track.dispose();
     this.track = new Track(KITS[id], c.districts?.length ?? 1, this.debugDistrict);
     this.audio.setAmbience(c.ambience);
+    this.powerFx.cableCar = !!c.powerVariants?.some((v) => v.of === 'fishRocket');
     this.alleyColor.setHex(c.alley?.fog ?? CAT_DOOR.fog);
     this.scene.add(this.track.root);
     this.env.setPalette(c.palette);
@@ -1170,6 +1184,7 @@ export class Game {
     }
 
     const mode = !afterCrash ? PackMode.Run : this.popped ? PackMode.Gloat : PackMode.Pounce;
+    this.pack.updatePals(frozen ? 0 : frameDt, run.pals.left, x, running ? r.speed : 0);
     if (frozen) this.pack.update(0, run.chase, x, r.speed, mode);
     else this.pack.update(frameDt, run.chase, x, running ? r.speed : 0, mode);
     this.fx.update(frozen ? 0 : frameDt, x, d.y);
