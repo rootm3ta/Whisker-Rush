@@ -23,6 +23,8 @@ import { rollLootAtLeast, Secrets } from './Secrets';
 import { Spawner } from './Spawner';
 import type { Rarity } from '../data/pickups';
 import { Rng } from '../core/Rng';
+import { defaultRunConfig, type RunConfig } from '../meta/Loadout';
+import { RunStatsCollector } from './RunStats';
 
 /** One run's simulation: runner, field, collisions, chase, power-ups, abilities, secrets, boss. No rendering. */
 export class RunSession {
@@ -42,6 +44,8 @@ export class RunSession {
   readonly boss: Boss;
   /** True when the last crash was a catch (second stumble), false for a head-on crash. */
   caught = false;
+  readonly stats: RunStatsCollector;
+  config: RunConfig = defaultRunConfig();
   private bankedCoins = 0;
   private bankedBones = 0;
   private wasBoss = false;
@@ -56,6 +60,7 @@ export class RunSession {
     this.abilities = new Abilities(bus);
     this.secrets = new Secrets(bus);
     this.boss = new Boss(bus);
+    this.stats = new RunStatsCollector(bus);
     this.spawner.hooks = this.secrets;
     this.collision.onSpecialPickup = this.onSpecialPickup;
     bus.on('nearMiss', () => this.keeper.nearMiss());
@@ -74,18 +79,27 @@ export class RunSession {
     return this.abilities.napping;
   }
 
-  reset(seed?: number, profile: Profile | null = null, now = Date.now()): void {
+  reset(seed?: number, profile: Profile | null = null, now = Date.now(), config: RunConfig = defaultRunConfig()): void {
+    this.config = config;
     this.runner.reset();
+    this.runner.configure(config.laneSwitchSec, config.jumpHeight, config.coyoteSec, config.maxKicks);
     this.field.reset();
     this.spawner.reset(seed);
     this.satchel.clear();
-    this.score.reset();
+    this.satchel.capacity = config.satchelCapacity;
+    this.score.reset(config.multiplier);
     this.collision.reset();
     this.keeper.reset();
     this.chase.reset();
     this.revives.reset();
     this.powerUps.reset();
+    this.powerUps.levelOf = config.powerLevel;
+    if (config.startBubble) this.powerUps.bubble = true;
     this.abilities.reset(profile?.ability ?? ABILITY.default);
+    this.abilities.napBonusSec = config.napBonusSec;
+    this.spawner.luck = config.luck;
+    this.spawner.catDoorMul = config.catDoorMul;
+    this.stats.reset();
     this.secrets.reset(profile, now);
     this.boss.reset();
     this.mods.clear();
@@ -181,7 +195,7 @@ export class RunSession {
     this.abilities.step(dt, r, this.mods);
     r.speedMul = this.mods.speedMul;
     this.score.tempMul = this.mods.scoreMul;
-    this.keeper.coinMul = this.mods.coinMul * this.secrets.coinBonus;
+    this.keeper.coinMul = this.mods.coinMul * this.secrets.coinBonus * this.config.coinMul;
 
     const alleyEnded = this.secrets.stepAlley(dt, r, this.field);
     this.boss.step(dt, r, this.field, this.secrets.inAlley || r.flying);
@@ -193,6 +207,7 @@ export class RunSession {
     this.spawner.update(r.distance, r.speed);
     r.step(dt);
     this.collision.step(r, dt);
+    if (r.grinding) this.stats.grindMeters += r.distance - r.prevDistance;
     if (!this.collision.crashed) this.chase.step(dt, r);
     this.keeper.update(dt, r.distance - r.prevDistance);
     const loaf = this.secrets.stepLoaf(dt);

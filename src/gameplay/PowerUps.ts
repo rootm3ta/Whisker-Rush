@@ -1,7 +1,8 @@
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import { LANES } from '../data/runner';
-import { POWERUPS, POWERUP_FX as FX, POWERUP_IDS, POWERUP_LEVEL_MULT, ROOMBA, type PowerUpId } from '../data/powerups';
+import { POWERUPS, POWERUP_FX as FX, POWERUP_IDS, ROOMBA, type PowerUpId } from '../data/powerups';
+import { UPGRADE_FX } from '../data/economy';
 import { Rng } from '../core/Rng';
 import { PickupKind, type Field } from './Field';
 import type { Collision } from './Collision';
@@ -58,8 +59,8 @@ export class PowerUps {
     if (id === 'bubble') {
       this.bubble = true;
     } else {
-      const lvl = Math.max(1, Math.min(POWERUP_LEVEL_MULT.length, this.levelOf(id)));
-      const amount = def.meters > 0 ? def.meters : def.duration * POWERUP_LEVEL_MULT[lvl - 1];
+      const lvl = Math.max(1, this.levelOf(id));
+      const amount = def.meters > 0 ? def.meters : def.duration + UPGRADE_FX.powerSecPerLevel * (lvl - 1);
       this.left[i] = amount;
       this.full[i] = amount;
     }

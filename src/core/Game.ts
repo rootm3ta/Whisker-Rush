@@ -26,6 +26,26 @@ import { FieldView } from '../render/FieldView';
 import { GameOver } from '../ui/GameOver';
 import { Hud } from '../ui/Hud';
 import { Overlay } from '../ui/Overlay';
+import { HomeScene } from '../render/HomeScene';
+import { TrailFx } from '../render/TrailFx';
+import { HomeHud } from '../ui/HomeHud';
+import { popup } from '../ui/Sheet';
+import type { MetaCtx } from '../ui/screens/ctx';
+import { MarketScreen } from '../ui/screens/MarketScreen';
+import { UpgradesScreen } from '../ui/screens/UpgradesScreen';
+import { WardrobeScreen } from '../ui/screens/WardrobeScreen';
+import { MissionsScreen } from '../ui/screens/MissionsScreen';
+import { CalendarScreen } from '../ui/screens/CalendarScreen';
+import { PassScreen } from '../ui/screens/PassScreen';
+import { SettingsScreen } from '../ui/screens/SettingsScreen';
+import type { HomeAction } from '../data/home';
+import { PASS } from '../data/economy';
+import { computeRunConfig } from '../meta/Loadout';
+import { applyStats, missionText, type RunStats } from '../meta/Missions';
+import { addToStash } from '../meta/Market';
+import { canClaimTier, runStamps } from '../meta/Pass';
+import { loginState } from '../meta/Calendar';
+import { localDay } from '../meta/Time';
 import { applyEnvironment } from '../world/Environment';
 import { Track } from '../world/Track';
 import { EventBus } from './EventBus';
@@ -60,6 +80,23 @@ export class Game {
   private readonly alleyColor = new THREE.Color(CAT_DOOR.fog);
   private readonly input: Input;
   private readonly overlay: Overlay;
+  private readonly home: HomeScene;
+  private readonly homeHud: HomeHud;
+  private readonly trail = new TrailFx();
+  private readonly homeTrail = new TrailFx();
+  private readonly market: MarketScreen;
+  private readonly screens: {
+    upgrades: UpgradesScreen;
+    wardrobe: WardrobeScreen;
+    missions: MissionsScreen;
+    calendar: CalendarScreen;
+    pass: PassScreen;
+    settings: SettingsScreen;
+  };
+  private readonly metaRng = new Rng((Date.now() ^ 0x5bd1e995) >>> 0);
+  private readonly labelPos = new THREE.Vector3();
+  private pokes = 0;
+  private dragX: number | null = null;
   private readonly hud: Hud;
   private readonly gameOver: GameOver;
   private readonly fsm: StateMachine<AppState>;
@@ -86,7 +123,7 @@ export class Game {
     applyEnvironment(this.scene, palette);
     this.track = new Track(palette);
     this.cat = new Cat(this.bus);
-    this.scene.add(this.track.root, this.fieldView.root, this.cat.rig.root, this.cat.rig.shadow, this.pack.root, this.fx.root);
+    this.scene.add(this.track.root, this.fieldView.root, this.cat.holder, this.cat.shadow, this.pack.root, this.fx.root);
     this.scene.add(this.powerFx.root, this.bossView.root);
     this.fogBase.copy((this.scene.fog as THREE.Fog).color);
     this.skyBase = this.scene.background as THREE.Texture;
@@ -104,10 +141,51 @@ export class Game {
       share: () => this.share(),
       continue: () => this.finishRun(),
     });
+    this.scene.add(this.trail.root);
+    this.home = new HomeScene(new EventBus<GameEvents>());
+    this.home.scene.add(this.homeTrail.root);
+    this.homeHud = new HomeHud(host, {
+      run: () => this.startRun(),
+      settings: () => this.screens.settings.open(),
+      pass: () => this.screens.pass.open(),
+    });
+    const ctx: MetaCtx = {
+      save: this.save,
+      rng: this.metaRng,
+      host,
+      now: () => Date.now(),
+      refresh: () => this.refreshMeta(),
+      reward: (title, lines) => popup(host, title, lines),
+      addStats: (stats) => this.applyMetaStats(stats),
+    };
+    this.market = new MarketScreen(ctx);
+    this.screens = {
+      upgrades: new UpgradesScreen(ctx),
+      wardrobe: new WardrobeScreen(ctx, (on) => {
+        this.home.previewOn = on;
+        this.home.spin = 0;
+      }),
+      missions: new MissionsScreen(ctx),
+      calendar: new CalendarScreen(ctx),
+      pass: new PassScreen(ctx),
+      settings: new SettingsScreen(ctx, () => {
+        this.save.reset();
+        this.fsm.go('boot');
+        this.fsm.go('home');
+      }),
+    };
     this.input = new Input(host, () => this.simTime);
     this.input.onTap = () => {
-      if (this.fsm.is('home') || this.fsm.is('paused')) this.fsm.go('run');
+      if (this.fsm.is('paused')) this.fsm.go('run');
     };
+    host.addEventListener('click', this.onHomeClick);
+    host.addEventListener('pointerdown', (e) => (this.dragX = this.home.previewOn ? e.clientX : null));
+    host.addEventListener('pointermove', (e) => {
+      if (this.dragX === null) return;
+      this.home.spin += (e.clientX - this.dragX) * 0.012;
+      this.dragX = e.clientX;
+    });
+    host.addEventListener('pointerup', () => (this.dragX = null));
     this.wireEvents();
 
     this.fsm = new StateMachine<AppState>(
@@ -116,7 +194,7 @@ export class Game {
         home: {
           enter: () => {
             const p = this.save.profile;
-            this.run.reset(undefined, p);
+            this.run.reset(undefined, p, Date.now(), computeRunConfig(p));
             this.track.reset();
             this.input.buffer.clear();
             this.hud.reset();
@@ -129,9 +207,15 @@ export class Game {
             this.setAlleyLook(false);
             this.freshRun = true;
             this.gameOver.hide();
-            this.overlay.showHome();
+            this.overlay.hide();
+            this.homeHud.visible = true;
+            this.refreshMeta();
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
+          exit: () => {
+            this.homeHud.visible = false;
+            this.home.previewOn = false;
+          },
         },
         run: {
           enter: () => {
@@ -374,17 +458,97 @@ export class Game {
     }
   }
 
+  /**
+   * Post-run: missions and challenges, Paw Stamps, loot into the stash, record the run,
+   * then home. If the Satchel had loot, Old Tom's Market opens (skippable).
+   */
   private finishRun(): void {
     if (!this.fsm.is('gameOver')) return;
     const run = this.run;
-    this.save.profile.revives += run.revives.total;
-    this.save.recordRun(run.score.points, run.runner.distance);
+    const p = this.save.profile;
+    const distance = run.runner.distance;
+    p.pass.stamps += runStamps(distance);
+    const loot: number[] = [];
+    for (let i = 0; i < run.satchel.count; i++) loot.push(run.satchel.at(i));
+    const overflow = addToStash(p, loot);
+    p.revives += run.revives.total;
+    this.applyMetaStats(run.stats.snapshot(distance, run.score.coins));
+    this.save.recordRun(run.score.points, distance);
     this.fx.setDizzy(false);
     this.fsm.go('home');
+    if (overflow > 0) popup(this.host, 'Stash full', [`Tom bought the overflow for ${overflow} coins.`]);
+    if (loot.length > 0) this.market.open();
   }
 
+  /** Feeds stats to missions/challenges and pops up anything completed. */
+  private applyMetaStats(stats: RunStats): void {
+    const p = this.save.profile;
+    const set = p.missions.set;
+    const res = applyStats(p, stats, localDay(Date.now()), this.metaRng);
+    this.save.write();
+    if (res.completed.length) popup(this.host, 'Mission complete!', res.completed.map((id) => missionText(id, set)));
+    if (res.setDone) popup(this.host, `Set done! Multiplier x${p.missions.multiplier}`, res.rewards);
+    else if (res.challengesDone) popup(this.host, 'Daily challenge done!', res.rewards);
+    this.refreshMeta();
+  }
+
+  /** Re-reads the profile into the Home HUD and both cats' looks. */
+  private refreshMeta(): void {
+    const p = this.save.profile;
+    const day = localDay(Date.now());
+    let passClaim = false;
+    for (let t = 1; t <= PASS.tiers && !passClaim; t++) passClaim = canClaimTier(p, t);
+    this.homeHud.setStats(p.coins, p.fishBones, p.missions.multiplier, p.bestScore, Math.floor(p.pass.stamps / PASS.stampsPerTier));
+    this.homeHud.setDot('calendar', loginState(p, day).canClaim);
+    this.homeHud.setDot('pass', passClaim);
+    this.homeHud.setDot('market', Object.keys(p.stash).length > 0);
+    this.cat.setLook(p.cat, p.outfit);
+    this.home.cat.setLook(p.cat, p.outfit);
+    this.trail.setTrail(p.outfit.trail);
+    this.homeTrail.setTrail(p.outfit.trail);
+    this.powerHud.setRoombaCount(p.inventory.roomba);
+    this.powerHud.setAbility(p.ability);
+  }
+
+  private startRun(): void {
+    if (!this.fsm.is('home') || this.anySheetOpen()) return;
+    this.fsm.go('run');
+  }
+
+  private anySheetOpen(): boolean {
+    return document.querySelector('.wr-sheet:not([hidden]), .wr-popup') !== null;
+  }
+
+  private readonly onHomeClick = (e: MouseEvent): void => {
+    if (!this.fsm.is('home') || e.target !== this.renderer.domElement || this.anySheetOpen()) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const hit = this.home.pick(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    if (!hit) return;
+    this.openHomeAction(hit as HomeAction | 'miso', e.clientX, e.clientY);
+  };
+
+  private openHomeAction(a: HomeAction | 'miso', x = 0, y = 0): void {
+    switch (a) {
+      case 'run':
+        this.startRun();
+        break;
+      case 'market':
+        this.market.open();
+        break;
+      case 'map':
+        popup(this.host, 'World Tour', ['Rome is packing its bags.', 'The map opens in the next update.']);
+        break;
+      case 'miso':
+        this.homeHud.say(this.home.poke(this.pokes++), x, y - 20);
+        break;
+      default:
+        this.screens[a].open();
+    }
+  }
+
+  /** Keyboard only: Up / Space starts a run from Home (swipes on Home are for spinning Miso). */
   private readonly startFromHome = (a: number): boolean => {
-    if (a !== Action.Pause) this.fsm.go('run');
+    if (this.input.lastSource === 'key' && (a === Action.Up || a === Action.Ability)) this.startRun();
     return true;
   };
 
@@ -421,7 +585,31 @@ export class Game {
     this.fsm.update(dt);
   };
 
+  private renderHome(frameDt: number): void {
+    const h = this.home;
+    h.update(frameDt);
+    this.homeHud.update(frameDt);
+    this.market.update();
+    const w = this.host.clientWidth;
+    const hh = this.host.clientHeight;
+    const sheet = this.anySheetOpen();
+    this.homeHud.setCovered(sheet);
+    for (const a of h.anchors) {
+      const v = this.labelPos.copy(a.pos).project(h.camera);
+      this.homeHud.placeLabel(a.action, ((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, !sheet && v.z < 1);
+    }
+    const seat = h.cat.holder.position;
+    this.homeTrail.update(frameDt, 0, 0, h.previewOn ? 2 : 0, h.previewOn);
+    this.homeTrail.root.position.copy(seat);
+    this.homeTrail.root.scale.setScalar(h.cat.holder.scale.x);
+    this.renderer.render(h.scene, h.camera);
+  }
+
   private readonly render = (alpha: number, frameDt: number): void => {
+    if (this.fsm.is('home')) {
+      this.renderHome(frameDt);
+      return;
+    }
     const run = this.run;
     const r = run.runner;
     const fsm = this.fsm;
@@ -477,6 +665,7 @@ export class Game {
 
     this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0, r.flying && !afterCrash);
     if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
+    this.trail.update(dt, x, d.y + d.lift, r.speed, running && !d.boxed);
     this.renderer.render(this.scene, this.rig.camera);
   };
 
@@ -485,5 +674,6 @@ export class Game {
     const h = this.host.clientHeight;
     this.renderer.setSize(w, h, false);
     this.rig.resize(w / h);
+    this.home.resize(w / h);
   };
 }

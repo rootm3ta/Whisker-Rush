@@ -60,3 +60,17 @@ One line per judgment call.
 - M4: Boss Chase every 3000 m pauses the spawner; Duke's truck holds 30 m ahead and throws parcels/cans/bikes that arc onto the road; 10 dodges and he swerves off the road, dropping a chest (250 coins, 1 Fish Bone, rare+ loot).
 - M4: Catnip "psychedelic tint" and Nap desaturation are CSS filters on the canvas; speed lines are a CSS overlay. Cheap, no extra render passes.
 - M4: Easter eggs (9:09 winking statue, Ada's suitcase, butcher cameo) were not in this milestone's request; left for the juice pass.
+- M5: Save is now `wr.save` version 2 with a `migrate()` that upgrades the M3/M4 `wr.save.v1` profile in place (defaults fill new fields; nested objects merged).
+- M5: Upgrade levels are 1-based (level 1 = base). The doc's 5-step cost ladder (500 .. 25k) buys 5 levels, so 5-level upgrades top out at level 6; the satchel has 8 sizes (12 .. 60) bought with 7 costs.
+- M5: Power-up upgrades add +2 s per level as the doc says (replacing the M4 percentage placeholder).
+- M5: Agility also adds "coyote time": a short window to still jump after running off a ledge (0.08 s, +0.03 s per level).
+- M5: Run loot goes into a persistent Stash (60 items) when the run ends; overflow is auto-sold at base price. Tom's board, Sell, Sell All and set trades all work on the stash, so players can hold items for hot days.
+- M5: Daily board, challenges and the login calendar roll over at local midnight (`localDay`); the board is seeded by day, Secret Stock by 8-hour bucket, so every player sees the same prices.
+- M5: Haggle is once per visit; the bonus applies to one item of the next Sell (the doc says "one sale").
+- M5: Collection Sets: Junk Drawer (Tail Ring), Toy Box (Crown), Fancy Things (Professor Mittens), Duke's Stuff (Aviators). Each trade also gives +2% coins forever.
+- M5: Cats: Miso, Biscuit (5k), Noir (10k), Sushi (15 Fish Bones), Professor Mittens (Fancy Things set), Pixel (Paw Pass tier 30, free track for now). Luna and Duke's Nightmare wait for events / bells.
+- M5: 23 accessories over 6 slots; some are not for sale and come from sets, the 3-day login streak, the Paw Pass or Tom's Secret Stock.
+- M5: The Active Ability is chosen at the Scratching Post (it is a "cat move" you train).
+- M5: Paw Pass ships the free track only (30 tiers, stamps from runs, missions, sets, challenges and logins); the premium track comes with IAP in M9.
+- M5: Home is a real 3D room (separate scene) with raycast-tappable furniture and DOM washi-tape labels projected from 3D anchors. Miso is drawn at 0.62x in the room. Swipes on Home never start a run; RUN paw, front door, or keyboard Up/Space do.
+- M5: Not in this milestone: Photo Mode, outfit-set bonuses (Paris), Tip Jar (needs IAP), leaderboards, push notifications, crash replay clips.

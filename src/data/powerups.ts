@@ -35,9 +35,6 @@ export const POWERUPS: Record<PowerUpId, PowerUpDef> = {
 
 export const POWERUP_IDS = Object.keys(POWERUPS) as PowerUpId[];
 
-/** Duration multiplier per Scratching Post level (1..5). */
-export const POWERUP_LEVEL_MULT = [1, 1.2, 1.4, 1.6, 1.8] as const;
-
 export const POWERUP_FX = {
   magnetRadius: 14,
   magnetAhead: 16,

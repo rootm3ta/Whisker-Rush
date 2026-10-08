@@ -17,6 +17,8 @@ export class Abilities {
   charge = 0;
   napLeft = 0;
   purrLeft = 0;
+  /** Sushi's passive. */
+  napBonusSec = 0;
   private ready = false;
 
   constructor(private readonly bus: EventBus<GameEvents>) {
@@ -54,7 +56,7 @@ export class Abilities {
         collision.clearStumbles();
         break;
       case 'nap':
-        this.napLeft = ABILITY.napSec;
+        this.napLeft = ABILITY.napSec + this.napBonusSec;
         break;
       case 'pounce':
         if (bossActive || r.flying) return false;

@@ -5,9 +5,6 @@ import { LANES, RUNNER, ZONE } from '../data/runner';
 import { HITBOX, WALL_KICK } from '../data/spawner';
 import { speedAt } from './SpeedCurve';
 
-const GRAVITY = (8 * RUNNER.jumpHeight) / (RUNNER.jumpSec * RUNNER.jumpSec);
-const JUMP_V = (4 * RUNNER.jumpHeight) / RUNNER.jumpSec;
-const KICK_V = Math.sqrt(2 * GRAVITY * WALL_KICK.height);
 const MAX_LANE = (LANES.count - 1) / 2;
 const DROP_THROUGH_SEC = 0.25;
 
@@ -48,6 +45,14 @@ export class Runner {
   dashLeft = 0;
   dashSpeed = 0;
 
+  private gravity = 0;
+  private jumpV = 0;
+  private kickV = 0;
+  private laneSwitchSec: number = RUNNER.laneSwitchSec;
+  private coyoteSec = 0;
+  private maxKicks: number = WALL_KICK.maxChain;
+  /** Seconds since the cat walked off a ledge without jumping (coyote time). */
+  private offLedge = Infinity;
   private prevLane = 0;
   private laneFromX = 0;
   private laneT = 1;
@@ -59,7 +64,19 @@ export class Runner {
   constructor(
     private readonly bus: EventBus<GameEvents>,
     private readonly world: RunnerWorld | null = null,
-  ) {}
+  ) {
+    this.configure(RUNNER.laneSwitchSec, RUNNER.jumpHeight, 0, WALL_KICK.maxChain);
+  }
+
+  /** Applies upgrades: lane switch time, jump height, coyote time and wall-kick chain. */
+  configure(laneSwitchSec: number, jumpHeight: number, coyoteSec: number, maxKicks: number): void {
+    this.laneSwitchSec = laneSwitchSec;
+    this.gravity = (8 * RUNNER.jumpHeight) / (RUNNER.jumpSec * RUNNER.jumpSec);
+    this.jumpV = Math.sqrt(2 * this.gravity * jumpHeight);
+    this.kickV = Math.sqrt(2 * this.gravity * WALL_KICK.height);
+    this.coyoteSec = coyoteSec;
+    this.maxKicks = maxKicks;
+  }
 
   get sliding(): boolean {
     return this.slideLeft > 0;
@@ -112,17 +129,18 @@ export class Runner {
       }
       case Action.Up:
         if (this.flyHeight !== null) return true;
-        if (this.grounded) {
+        if (this.grounded || this.offLedge <= this.coyoteSec) {
           this.slideLeft = 0;
           this.setGrinding(false);
           this.grounded = false;
-          this.vy = JUMP_V;
-          this.bus.emit('jump', JUMP_V);
+          this.offLedge = Infinity;
+          this.vy = this.jumpV;
+          this.bus.emit('jump', this.jumpV);
           return true;
         }
-        if (this.kicks < WALL_KICK.maxChain && this.world?.canWallKick(this.x, this.distance, this.y)) {
+        if (this.kicks < this.maxKicks && this.world?.canWallKick(this.x, this.distance, this.y)) {
           this.kicks++;
-          this.vy = Math.max(this.vy, KICK_V);
+          this.vy = Math.max(this.vy, this.kickV);
           this.slideOnLand = false;
           this.bus.emit('wallKick', this.kicks);
           return true;
@@ -199,6 +217,7 @@ export class Runner {
     this.vy = 0;
     this.grounded = true;
     this.kicks = 0;
+    this.offLedge = Infinity;
     this.setGrinding(grind);
     this.bus.emit('land', impact);
     if (this.slideOnLand) {
@@ -237,7 +256,7 @@ export class Runner {
     if (this.grinding) this.grindTime += dt;
 
     if (this.laneT < 1) {
-      this.laneT = Math.min(1, this.laneT + dt / RUNNER.laneSwitchSec);
+      this.laneT = Math.min(1, this.laneT + dt / this.laneSwitchSec);
       const target = this.lane * LANES.width;
       this.x = this.laneFromX + (target - this.laneFromX) * easeOutCubic(this.laneT);
     }
@@ -256,6 +275,7 @@ export class Runner {
       if (sup < this.y - 0.02) {
         this.leaveGround();
         this.vy = 0;
+        this.offLedge = 0;
       } else {
         this.y = sup;
         this.setGrinding(w ? w.lastGrind : false);
@@ -265,8 +285,9 @@ export class Runner {
     if (!this.grounded && this.flyHeight === null) {
       const yPrev = this.y;
       // Exact ballistic step so jump height matches data at any dt.
-      this.y += this.vy * dt - 0.5 * GRAVITY * dt * dt;
-      this.vy -= GRAVITY * dt;
+      this.offLedge += dt;
+      this.y += this.vy * dt - 0.5 * this.gravity * dt * dt;
+      this.vy -= this.gravity * dt;
       if (this.vy <= 0) {
         const sup = w ? w.supportAt(this.x, this.distance, yPrev, 0, ignoreGrind) : 0;
         if (this.y <= sup) this.land(sup, w ? w.lastGrind : false);

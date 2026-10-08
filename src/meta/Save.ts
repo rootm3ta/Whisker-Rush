@@ -1,30 +1,53 @@
 import { ABILITY, type AbilityId } from '../data/abilities';
+import type { Slot } from '../data/accessories';
+import type { CatId } from '../data/cats';
 import { ECONOMY_START } from '../data/chase';
+import type { MissionStat, UpgradeId } from '../data/economy';
 import type { IStorage } from '../platform/Storage';
 
+export interface MissionSlot {
+  id: string;
+  progress: number;
+}
+
 export interface Profile {
-  version: 1;
+  version: 2;
   bestScore: number;
   bestDistance: number;
   coins: number;
   fishBones: number;
   runs: number;
   revives: number;
-  /** Consumables: Roomba rides and start boosts. */
   inventory: { roomba: number; zoomies: number; fishRocket: number };
   ability: AbilityId;
-  /** Lucky Bell ids found in Maple Lane. */
   bells: number[];
   goldenCollar: boolean;
-  /** Daily Hunt: UTC day number and letter indices found that day. */
   hunt: { day: number; found: number[] };
+  /** Loot item id -> count, kept between runs for Old Tom. */
+  stash: Record<string, number>;
+  upgrades: Partial<Record<UpgradeId, number>>;
+  cats: CatId[];
+  cat: CatId;
+  accessories: string[];
+  outfit: Partial<Record<Slot, string>>;
+  /** Completed (traded) Collection Sets. */
+  sets: string[];
+  missions: { set: number; multiplier: number; active: MissionSlot[] };
+  challenges: { day: number; list: (MissionSlot & { done: boolean })[] };
+  login: { lastDay: number; streak: number; next: number; streakRewarded: boolean };
+  pass: { stamps: number; claimed: number[] };
+  /** Secret Stock purchases as "bucket:id". */
+  secretBought: string[];
+  settings: { music: boolean; sfx: boolean; haptics: boolean };
+  totals: Partial<Record<MissionStat, number>>;
 }
 
-const KEY = 'wr.save.v1';
+const KEY = 'wr.save';
+const LEGACY_KEYS = ['wr.save.v1'];
 
 export function defaultProfile(): Profile {
   return {
-    version: 1,
+    version: 2,
     bestScore: 0,
     bestDistance: 0,
     coins: ECONOMY_START.coins,
@@ -36,10 +59,40 @@ export function defaultProfile(): Profile {
     bells: [],
     goldenCollar: false,
     hunt: { day: -1, found: [] },
+    stash: {},
+    upgrades: {},
+    cats: ['miso'],
+    cat: 'miso',
+    accessories: [],
+    outfit: {},
+    sets: [],
+    missions: { set: 0, multiplier: 1, active: [] },
+    challenges: { day: -1, list: [] },
+    login: { lastDay: -1, streak: 0, next: 0, streakRewarded: false },
+    pass: { stamps: 0, claimed: [] },
+    secretBought: [],
+    settings: { music: true, sfx: true, haptics: true },
+    totals: {},
   };
 }
 
-/** Versioned player profile behind an IStorage. Extended with inventory and upgrades in M5. */
+/** Upgrades any older save shape to the current version, keeping what it can. */
+export function migrate(raw: unknown): Profile {
+  const base = defaultProfile();
+  if (!raw || typeof raw !== 'object') return base;
+  const p = raw as Partial<Profile> & { version?: number };
+  const merged = { ...base, ...p, version: 2 as const };
+  // Nested objects from v1 may be missing keys added later.
+  merged.inventory = { ...base.inventory, ...(p.inventory ?? {}) };
+  merged.settings = { ...base.settings, ...(p.settings ?? {}) };
+  merged.login = { ...base.login, ...(p.login ?? {}) };
+  merged.missions = { ...base.missions, ...(p.missions ?? {}) };
+  merged.pass = { ...base.pass, ...(p.pass ?? {}) };
+  if (!merged.cats.includes('miso')) merged.cats = ['miso', ...merged.cats];
+  return merged;
+}
+
+/** Versioned player profile behind an IStorage. */
 export class Save {
   profile: Profile;
 
@@ -48,18 +101,25 @@ export class Save {
   }
 
   private load(): Profile {
-    const raw = this.storage.get(KEY);
-    if (!raw) return defaultProfile();
-    try {
-      const p = JSON.parse(raw) as Partial<Profile>;
-      return { ...defaultProfile(), ...p, version: 1 };
-    } catch {
-      return defaultProfile();
+    for (const key of [KEY, ...LEGACY_KEYS]) {
+      const raw = this.storage.get(key);
+      if (!raw) continue;
+      try {
+        return migrate(JSON.parse(raw));
+      } catch {
+        /* Corrupt save: fall through to the next key or defaults. */
+      }
     }
+    return defaultProfile();
   }
 
   write(): void {
     this.storage.set(KEY, JSON.stringify(this.profile));
+  }
+
+  reset(): void {
+    this.profile = defaultProfile();
+    this.write();
   }
 
   /** Records a finished run; returns true on a new best score. */

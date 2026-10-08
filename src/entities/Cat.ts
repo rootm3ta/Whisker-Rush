@@ -2,7 +2,11 @@ import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import { Rng } from '../core/Rng';
 import { CAT_ANIM as A, CAT_SHAPE } from '../data/cat';
-import { buildCat, type CatRig } from '../procgen/cat';
+import * as THREE from 'three';
+import type { Slot } from '../data/accessories';
+import { CATS, type CatId } from '../data/cats';
+import { dressCat } from '../procgen/accessories';
+import { buildCat, buildShadow, type CatRig } from '../procgen/cat';
 
 const TAU = Math.PI * 2;
 const MAX_SUBSTEP = 1 / 60;
@@ -37,7 +41,11 @@ function damp(cur: number, target: number, rate: number, dt: number): number {
 
 /** Miso: procedural gallop, jump, slide, land, squash/stretch, spring tail, blink and ear flicks. */
 export class Cat {
-  readonly rig: CatRig;
+  rig: CatRig;
+  /** Stays in the scene while the rig inside is rebuilt for skins. */
+  readonly holder = new THREE.Group();
+  readonly shadow = buildShadow();
+  private skin: CatId = 'miso';
   private readonly rng = new Rng(99);
   private phase = 0;
   private time = 0;
@@ -60,7 +68,8 @@ export class Cat {
   private readonly tailYawV: Float32Array;
 
   constructor(bus: EventBus<GameEvents>) {
-    this.rig = buildCat();
+    this.rig = buildCat(CATS.miso);
+    this.holder.add(this.rig.root);
     const n = CAT_SHAPE.tailSegments;
     this.tailPitch = Float32Array.from(A.tailBaseCurve);
     this.tailPitchV = new Float32Array(n);
@@ -71,6 +80,17 @@ export class Cat {
     bus.on('laneChange', () => (this.squashV += A.laneSquash));
     bus.on('wallKick', () => (this.squashV += A.jumpStretch * 1.2));
     bus.on('stumble', () => (this.squashV -= A.jumpStretch));
+  }
+
+  /** Swaps the skin (rebuilds the rig) and dresses the outfit. */
+  setLook(skin: CatId, outfit: Partial<Record<Slot, string>>): void {
+    if (skin !== this.skin) {
+      this.skin = skin;
+      this.holder.remove(this.rig.root);
+      this.rig = buildCat(CATS[skin]);
+      this.holder.add(this.rig.root);
+    }
+    dressCat(this.rig, outfit);
   }
 
   update(frameDt: number, d: CatDrive): void {
@@ -130,9 +150,9 @@ export class Cat {
     r.root.rotation.z = -this.latVel * A.leanRoll + this.grind * A.grindWobble * Math.sin(this.time * A.grindWobbleHz * TAU);
     r.root.rotation.y = -this.latVel * A.leanYaw;
     r.root.position.set(d.x, d.y, 0);
-    r.shadow.position.x = d.x;
+    this.shadow.position.x = d.x;
     const s = 1 / (1 + d.y * 0.35);
-    r.shadow.scale.set(s, 1, 1.6 * s);
+    this.shadow.scale.set(s, 1, 1.6 * s);
 
     this.blinkAndEars(frameDt);
 
@@ -158,7 +178,7 @@ export class Cat {
 
     const show = !d.hidden && !(d.flicker && Math.floor(this.time * 12) % 2 === 0);
     r.root.visible = show;
-    r.shadow.visible = !d.hidden;
+    this.shadow.visible = !d.hidden;
   }
 
   /** Squash-pop when Miso bursts out of the dust cloud or revives. */

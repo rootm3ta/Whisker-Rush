@@ -22,6 +22,8 @@ const KEYS: Record<string, ActionId> = {
 /** Swipes, taps, double taps and keyboard, stamped with sim time into a 150 ms buffer. */
 export class Input {
   readonly buffer = new ActionBuffer(INPUT.bufferCapacity, INPUT.bufferSec);
+  /** Where the last action came from (Home only starts runs from the keyboard). */
+  lastSource: 'key' | 'touch' = 'touch';
   /** Called on single taps (menus). */
   onTap: (() => void) | null = null;
 
@@ -64,6 +66,7 @@ export class Input {
     const min = Math.max(INPUT.swipeMinPx, Math.min(window.innerWidth, window.innerHeight) * INPUT.swipeFrac);
     if (Math.abs(dx) < min && Math.abs(dy) < min) return;
     this.swiped = true;
+    this.lastSource = 'touch';
     if (Math.abs(dx) > Math.abs(dy)) this.push(dx < 0 ? Action.Left : Action.Right);
     else this.push(dy < 0 ? Action.Up : Action.Down);
   };
@@ -90,6 +93,7 @@ export class Input {
     if (a === undefined) return;
     e.preventDefault();
     if (e.repeat) return;
+    this.lastSource = 'key';
     this.push(a);
   };
 }

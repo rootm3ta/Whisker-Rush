@@ -34,23 +34,24 @@ export function pickTier(distance: number, rng: Rng): 1 | 2 | 3 {
 }
 
 /** Weighted pattern pick inside a tier, avoiding an immediate repeat when possible. */
-export function pickPattern(tier: 1 | 2 | 3, rng: Rng, last: Pattern | null): Pattern {
+export function pickPattern(tier: 1 | 2 | 3, rng: Rng, last: Pattern | null, weightOf: (p: Pattern) => number = (p) => p.weight): Pattern {
   const list = BY_TIER[tier - 1];
   for (let attempt = 0; attempt < 4; attempt++) {
-    const p = list[weightedIndex(list.map((q) => q.weight), rng.next())];
+    const p = list[weightedIndex(list.map(weightOf), rng.next())];
     if (p !== last || list.length === 1) return p;
   }
   return list[0] === last && list.length > 1 ? list[1] : list[0];
 }
 
-export function rollRarity(rng: Rng, distance: number): Rarity {
+/** `luck` (Lucky Whiskers) scales the weight of rare and better loot. */
+export function rollRarity(rng: Rng, distance: number, luck = 1): Rarity {
   const k = distance / 1000;
-  const w = RARITIES.map((r, i) => r.weight * (1 + RARITY_DISTANCE_BONUS[i] * k));
+  const w = RARITIES.map((r, i) => r.weight * (1 + RARITY_DISTANCE_BONUS[i] * k) * (i >= 2 ? luck : 1));
   return weightedIndex(w, rng.next()) as Rarity;
 }
 
-export function rollLootItem(rng: Rng, distance: number): number {
-  const rarity = rollRarity(rng, distance);
+export function rollLootItem(rng: Rng, distance: number, luck = 1): number {
+  const rarity = rollRarity(rng, distance, luck);
   const items = LOOT_MAPLE_LANE.filter((i) => i.rarity === rarity);
   const item = rng.pick(items);
   return LOOT_MAPLE_LANE.indexOf(item);
@@ -70,6 +71,11 @@ export class Spawner {
   /** While paused (Boss Chase, Secret Alley) no patterns are placed. */
   paused = false;
   hooks: SpawnHooks | null = null;
+  /** Lucky Whiskers multiplier for rare loot. */
+  luck = 1;
+  /** Noir's passive: cat door patterns appear more often. */
+  catDoorMul = 1;
+  private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
   private nextS: number = SPAWNER.firstAt;
   private last: Pattern | null = null;
   private readonly rng = new Rng(SPAWNER.seed);
@@ -96,7 +102,7 @@ export class Spawner {
     }
     while (this.nextS < distance + SPAWNER.aheadM) {
       const tier = pickTier(this.nextS, this.rng);
-      const p = pickPattern(tier, this.rng, this.last);
+      const p = pickPattern(tier, this.rng, this.last, this.weightOf);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
       this.last = p;
       const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
@@ -145,7 +151,7 @@ export class Spawner {
           break;
         case 'loot':
           if (rng.next() < LOOT.fishBoneChance) f.addPickup(PickupKind.FishBone, 0, x, s, e.y);
-          else f.addPickup(PickupKind.Loot, rollLootItem(rng, s), x, s, e.y);
+          else f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck), x, s, e.y);
           break;
         case 'bell': {
           const id = this.hooks?.nextBell() ?? -1;

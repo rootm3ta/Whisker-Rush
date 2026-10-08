@@ -57,6 +57,8 @@ export class GameOver {
       </div>`;
     host.appendChild(root);
     this.root = root;
+    root.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+    for (const ev of ['pointerdown', 'pointerup'] as const) root.addEventListener(ev, (e) => e.stopPropagation());
     for (const k of ['title', 'score-v', 'best-stamp', 'dist', 'best', 'coins', 'revives', 'loot', 'revive', 'share', 'continue', 'toast']) {
       this.el[k] = root.querySelector(`.wr-go-${k}`)!;
     }
