@@ -240,6 +240,9 @@ export class Game {
       adsLeft: (placement) => rewardedLeft(this.save.profile, placement, Date.now()),
       openShop: () => this.shop.open(),
       openOdds: () => this.odds.open(),
+      openPass: () => this.screens.pass.open(),
+      buy: (id) => this.shop.buy(id),
+      haptic: (k) => (k === 'tick' ? this.haptics.tick() : k === 'success' ? this.haptics.medium() : this.haptics.heavy()),
     };
     this.market = new MarketScreen(ctx);
     this.shop = new ShopScreen(ctx, this.iap);

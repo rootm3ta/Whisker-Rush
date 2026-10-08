@@ -3,6 +3,7 @@ import { PASS } from '../data/economy';
 import { BUNDLES, PRODUCTS, STARTER_HOURS, TIP_JAR, passPremiumReward, type ProductId } from '../data/monetization';
 import { canClaimTier, passTier } from './Pass';
 import { grant } from './Rewards';
+import { BOUTIQUE } from '../data/boutique';
 import type { Profile } from './Save';
 
 /** Which rotating cat bundle is on sale this week. */
@@ -14,13 +15,55 @@ export function starterAvailable(p: Profile, now: number): boolean {
   return !p.iap.owned.includes('starter') && now - p.firstSeen < STARTER_HOURS * 3_600_000;
 }
 
-/** Products currently on the shelf. */
+/** Milliseconds left on the Starter Pack offer (0 once owned or expired). */
+export function starterMsLeft(p: Profile, now: number): number {
+  if (p.iap.owned.includes('starter')) return 0;
+  return Math.max(0, p.firstSeen + STARTER_HOURS * 3_600_000 - now);
+}
+
+/** Milliseconds until the weekly bundle rotates. */
+export function bundleMsLeft(now: number): number {
+  const W = 7 * 86_400_000;
+  return W - (now % W);
+}
+
+/** The hero card: Starter Pack in its first 72 h, else this week's bundle, else the Coin Doubler. */
+export function heroProduct(p: Profile, now: number): ProductId | null {
+  if (starterAvailable(p, now)) return 'starter';
+  const b = currentBundle(now);
+  if (!p.iap.owned.includes(b)) return b;
+  return p.iap.coinDoubler ? null : 'coinDoubler';
+}
+
+/** Free daily gift at Pearl's: once per local day. */
+export function giftAvailable(p: Profile, day: number): boolean {
+  return p.boutique.giftDay !== day;
+}
+
+export function claimGift(p: Profile, day: number, rng: Rng): string[] | null {
+  if (!giftAvailable(p, day)) return null;
+  p.boutique.giftDay = day;
+  const G = BOUTIQUE.dailyGifts;
+  return grant(p, G[((day % G.length) + G.length) % G.length], rng);
+}
+
+/** The second (ad) gift unlocks after the free one, once per day. */
+export function adGiftAvailable(p: Profile, day: number): boolean {
+  return p.boutique.giftDay === day && p.boutique.adGiftDay !== day;
+}
+
+export function claimAdGift(p: Profile, day: number, rng: Rng): string[] | null {
+  if (!adGiftAvailable(p, day)) return null;
+  p.boutique.adGiftDay = day;
+  return grant(p, BOUTIQUE.adGift, rng);
+}
+
+/** Products currently on the shelf (Paw Pass items live on the Pass screen; Fish Bones S retired). */
 export function shelf(p: Profile, now: number): ProductId[] {
   const out: ProductId[] = [];
   if (starterAvailable(p, now)) out.push('starter');
   if (!p.iap.noAds) out.push('noAds');
-  out.push('fishS', 'fishM', 'fishL', 'fishXL');
-  if (!p.pass.premium) out.push('passPremium', 'passPlus');
+  out.push('fishM', 'fishL', 'fishXL');
   out.push('tipJar');
   const b = currentBundle(now);
   if (!p.iap.owned.includes(b)) out.push(b);

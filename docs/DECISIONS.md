@@ -123,3 +123,11 @@ One line per judgment call.
 - S2: Time of day: morning from 5, golden hour from 12, dusk from 18, night from 21 (local clock; `?tod=night` to test). Room sun, ambient and a lamp light follow it.
 - S2: The tour spotlights the RUN paw for the Run step, because the door is hidden behind the fridge from the Home camera.
 - S2: Debug menu (`?debug`, corner DBG button) with ambient events, time of day and tour replay; later cities add their own sections.
+- S3: The shop is "Pearl's Treat Boutique". Pearl is a hand-drawn animated SVG (blink, tail, grooming, register taps, eyes follow the card you touch, happy spin on purchase) rather than a second 3D character, to keep the shop cheap.
+- S3: 3D cat previews use one small extra WebGL context (`render/Turntable.ts`): the hero spins live, carousel and confirm art are cached still snapshots, so only one preview canvas renders at a time.
+- S3: No strike-through prices: nothing in the catalog is sold separately for a higher price, so any "was" price would be fake. `BOUTIQUE.wasUsd` exists for genuine cases.
+- S3: Hero = Starter Pack during its 72 h, then this week's bundle (counts down to the weekly rotation), then the Coin Doubler. All cat bundles also sit in the carousel.
+- S3: Daily gift cycles a 7-day table by local day; the ad gift (new `shopGift` rewarded placement, 1 per day) unlocks after the free one.
+- S3: IIAP.purchase now returns 'ok' | 'cancelled' | 'failed' so the shop can explain what happened; the web mock store offers Buy, Simulate failure and Cancel.
+- S3: Paw Pass products moved to the Pass screen (it buys through the same confirm sheet). Fish Bones S retired from the shelf (kept in the catalog for receipts).
+- S3: Sheets re-append themselves on open so the most recently opened sheet is always on top (odds over the boutique, boutique over the Pass).

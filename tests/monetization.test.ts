@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/Rng';
-import { AD_RULES, PRODUCTS, TIP_JAR, passPremiumReward } from '../src/data/monetization';
+import { AD_RULES, PRODUCTS, STARTER_HOURS, TIP_JAR, passPremiumReward } from '../src/data/monetization';
 import { PASS } from '../src/data/economy';
 import { canShowInterstitial, personalizedAds, recordInterstitial, recordRewarded, recordRunForAds, rewardedLeft } from '../src/meta/AdPolicy';
 import { computeRunConfig } from '../src/meta/Loadout';
-import { canClaimPremium, claimPremium, currentBundle, fillTipJar, grantProduct, restoreOwned, shelf, starterAvailable } from '../src/meta/Shop';
+import { adGiftAvailable, bundleMsLeft, canClaimPremium, claimAdGift, claimGift, claimPremium, currentBundle, fillTipJar, giftAvailable, grantProduct, heroProduct, restoreOwned, shelf, starterAvailable, starterMsLeft } from '../src/meta/Shop';
 import { defaultProfile } from '../src/meta/Save';
 
 const rng = () => new Rng(3);
@@ -130,5 +130,61 @@ describe('IAP catalog', () => {
 
   it('cat bundles rotate weekly', () => {
     expect(currentBundle(0)).not.toBe(currentBundle(7 * DAY));
+  });
+});
+
+describe("Pearl's boutique", () => {
+  const H = 3_600_000;
+  it('daily gift is claimable once per local day and resets the next day', () => {
+    const p = defaultProfile();
+    const rng = new Rng(1);
+    expect(giftAvailable(p, 100)).toBe(true);
+    const lines = claimGift(p, 100, rng);
+    expect(lines && lines.length).toBeGreaterThan(0);
+    expect(giftAvailable(p, 100)).toBe(false);
+    expect(claimGift(p, 100, rng)).toBeNull();
+    expect(giftAvailable(p, 101)).toBe(true);
+    expect(claimGift(p, 101, rng)).not.toBeNull();
+  });
+
+  it('ad gift needs the free gift first and works once per day', () => {
+    const p = defaultProfile();
+    const rng = new Rng(2);
+    expect(adGiftAvailable(p, 5)).toBe(false);
+    claimGift(p, 5, rng);
+    expect(adGiftAvailable(p, 5)).toBe(true);
+    const coins = p.coins;
+    claimAdGift(p, 5, rng);
+    expect(p.coins).toBeGreaterThan(coins);
+    expect(adGiftAvailable(p, 5)).toBe(false);
+    expect(claimAdGift(p, 5, rng)).toBeNull();
+  });
+
+  it('starter pack timer counts down and the offer disappears at 0', () => {
+    const p = defaultProfile();
+    p.firstSeen = 0;
+    expect(starterMsLeft(p, 0)).toBe(STARTER_HOURS * H);
+    expect(starterMsLeft(p, 10 * H)).toBe((STARTER_HOURS - 10) * H);
+    expect(heroProduct(p, 10 * H)).toBe('starter');
+    expect(starterMsLeft(p, STARTER_HOURS * H)).toBe(0);
+    expect(starterAvailable(p, STARTER_HOURS * H)).toBe(false);
+    expect(heroProduct(p, STARTER_HOURS * H)).not.toBe('starter');
+    expect(shelf(p, STARTER_HOURS * H)).not.toContain('starter');
+  });
+
+  it('owning the starter pack ends the timer early', () => {
+    const p = defaultProfile();
+    p.firstSeen = 0;
+    grantProduct(p, 'starter', new Rng(3));
+    expect(starterMsLeft(p, H)).toBe(0);
+    expect(heroProduct(p, H)).not.toBe('starter');
+  });
+
+  it('shelf drops Fish Bones S and the Paw Pass products', () => {
+    const s = shelf(defaultProfile(), 0);
+    expect(s).not.toContain('fishS');
+    expect(s).not.toContain('passPremium');
+    expect(s).not.toContain('passPlus');
+    expect(bundleMsLeft(0)).toBe(7 * 86_400_000);
   });
 });

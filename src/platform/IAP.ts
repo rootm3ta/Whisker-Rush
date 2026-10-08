@@ -5,11 +5,13 @@ export interface IapProduct {
   price: string;
 }
 
+export type PurchaseResult = 'ok' | 'cancelled' | 'failed';
+
 export interface IIAP {
   init(skus: readonly string[]): Promise<void>;
   products(): IapProduct[];
-  /** Resolves true when the purchase completed. */
-  purchase(sku: string, consumable: boolean, label: string): Promise<boolean>;
+  /** Completed, cancelled by the player, or failed (network, store error). Never throws. */
+  purchase(sku: string, consumable: boolean, label: string): Promise<PurchaseResult>;
   /** SKUs of non-consumables the store says the player owns. */
   restore(): Promise<string[]>;
 }

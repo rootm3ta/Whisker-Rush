@@ -16,11 +16,11 @@ export const AD_UNITS = {
   testing: true,
 } as const;
 
-export type RewardedPlacement = 'revive' | 'doubleLoot' | 'freeCrate' | 'headStart' | 'secretRefresh';
+export type RewardedPlacement = 'revive' | 'doubleLoot' | 'freeCrate' | 'headStart' | 'secretRefresh' | 'shopGift';
 
 export const AD_RULES = {
   /** Rewarded caps. Revive (once per run) and doubleLoot (once per visit) are tracked in the run/visit. */
-  rewardedPerDay: { freeCrate: 3, headStart: 2 } as Partial<Record<RewardedPlacement, number>>,
+  rewardedPerDay: { freeCrate: 3, headStart: 2, shopGift: 1 } as Partial<Record<RewardedPlacement, number>>,
   secretRefreshHours: 8,
   /** Post-run interstitial: not before session 4, max 1 per 3 runs, 3 min apart, never after a new best. */
   interstitial: { minSession: 4, everyRuns: 3, minGapSec: 180 },

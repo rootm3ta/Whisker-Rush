@@ -51,6 +51,8 @@ export class Sheet {
 
   open(): void {
     if (!this.el.hidden) return;
+    // The most recently opened sheet always sits on top of the others.
+    this.el.parentElement?.appendChild(this.el);
     this.el.hidden = false;
     overlays.open++;
   }

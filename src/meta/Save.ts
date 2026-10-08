@@ -54,6 +54,8 @@ export interface Profile {
   /** Purchases. Non-consumables are restored from the store on native. */
   iap: { noAds: boolean; coinDoubler: boolean; owned: string[] };
   tipJar: number;
+  /** Pearl's boutique: last local day the free gift and the ad gift were claimed, tip jar size at last visit. */
+  boutique: { giftDay: number; adGiftDay: number; lastJar: number };
   privacy: { ageGateDone: boolean; under13: boolean; attAsked: boolean };
   totals: Partial<Record<MissionStat, number>>;
 }
@@ -98,6 +100,7 @@ export function defaultProfile(): Profile {
     ads: { day: -1, counts: {}, secretRefreshAt: 0, secretShift: 0, lastInterstitialAt: 0, runsSinceInterstitial: 0 },
     iap: { noAds: false, coinDoubler: false, owned: [] },
     tipJar: 10,
+    boutique: { giftDay: -1, adGiftDay: -1, lastJar: 0 },
     privacy: { ageGateDone: false, under13: false, attAsked: false },
     totals: {},
   };
@@ -118,6 +121,7 @@ export function migrate(raw: unknown): Profile {
   merged.ads = { ...base.ads, ...(p.ads ?? {}) };
   merged.iap = { ...base.iap, ...(p.iap ?? {}) };
   merged.privacy = { ...base.privacy, ...(p.privacy ?? {}) };
+  merged.boutique = { ...base.boutique, ...(p.boutique ?? {}) };
   // Players from before onboarding existed have already played: skip the first-session flow.
   merged.flags = p.flags ? { ...base.flags, ...p.flags } : { ...base.flags, ...(p.runs ? { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true } : {}) };
   if (!merged.cats.includes('miso')) merged.cats = ['miso', ...merged.cats];

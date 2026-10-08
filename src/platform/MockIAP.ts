@@ -1,4 +1,4 @@
-import type { IapProduct, IIAP } from './IAP';
+import type { IapProduct, IIAP, PurchaseResult } from './IAP';
 import { PRODUCTS } from '../data/monetization';
 
 /** Web mock store: a confirm card instead of a payment sheet. Nothing is charged. */
@@ -16,13 +16,13 @@ export class MockIAP implements IIAP {
     return this.list;
   }
 
-  purchase(sku: string, _consumable: boolean, label: string): Promise<boolean> {
+  purchase(sku: string, _consumable: boolean, label: string): Promise<PurchaseResult> {
     const price = this.list.find((p) => p.sku === sku)?.price ?? '';
     return new Promise((resolve) => {
       const el = document.createElement('div');
       el.className = 'wr-ad';
       el.innerHTML = `<div class="wr-ad-card"><p class="wr-ad-tag">Test store (web)</p><p class="wr-ad-name"></p><p>No money is charged on the web build.</p>
-        <button class="wr-btn wr-btn-main" data-a="buy">Buy ${price}</button> <button class="wr-btn" data-a="cancel" style="margin-top:8px">Cancel</button></div>`;
+        <button class="wr-btn wr-btn-main" data-a="ok">Buy ${price}</button> <button class="wr-btn" data-a="failed" style="margin-top:8px">Simulate failure</button> <button class="wr-btn" data-a="cancelled" style="margin-top:8px">Cancel</button></div>`;
       el.querySelector('.wr-ad-name')!.textContent = label;
       for (const ev of ['pointerdown', 'pointerup'] as const) el.addEventListener(ev, (e) => e.stopPropagation());
       el.addEventListener('click', (e) => {
@@ -30,7 +30,7 @@ export class MockIAP implements IIAP {
         const a = (e.target as HTMLElement).closest('button')?.dataset.a;
         if (!a) return;
         el.remove();
-        resolve(a === 'buy');
+        resolve(a as PurchaseResult);
       });
       this.host.appendChild(el);
     });
