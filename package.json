@@ -1,0 +1,24 @@
+{
+  "name": "whisker-rush",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "postprocessing": "^6.39.5",
+    "three": "^0.186.1",
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  }
+}
