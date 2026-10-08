@@ -21,3 +21,16 @@ One line per judgment call.
 - M1: Wall-kick and high layer deferred to M4 (hidden routes), as planned.
 - M1: Minimal Home/Pause card and distance HUD as placeholders; full sketchbook UI comes in M5/M7.
 - M1: Calico coat is a seeded canvas texture on torso/head; tail is plain orange with a black tip for readability from the chase camera.
+- M2: 24 hand-authored patterns in 3 tiers; tier weights by distance live in `data/spawner.ts`; patterns are mirrored at random and never repeat back to back.
+- M2: Gap between patterns scales with speed (0.85 s of travel, min 10 m) so reaction time stays fair as speed ramps.
+- M2: One unified surface model: obstacles may have a blocking body, a walkable top, a ramp top, or a grind top (clotheslines). Car roofs, truck roofs, hedge walls and lines are all "high layer".
+- M2: Forgiving collisions: cat hitbox narrower than lanes, 0.35 m step-up onto ledges, and catching a ledge from slightly below snaps you on top instead of crashing.
+- M2: Side bumps (lane change into an obstacle) are stumbles with a bounce back; head-on lethal = crash; non-lethal = stumble. A second stumble within 6 s = caught (M3 adds the dogs).
+- M2: Cat Reflex arms when a swipe applies while an obstacle is within 0.25 s, measured at the pre-swipe pose; slow-mo (x0.4 for 0.3 s real time) fires when that obstacle is cleared, so the stamp lands as you pass it.
+- M2: Wall-kick works off kickable obstacles (cars, mail trucks, hedge walls) in an adjacent lane, up to 3 per airtime, +1.3 m each.
+- M2: Swipe down while grinding drops through the line; lane swipes hop between parallel lines.
+- M2: Socks on clotheslines are the "Sock" common loot item, so they use Satchel slots.
+- M2: Loot rarity weights drift toward rarer items with distance (`RARITY_DISTANCE_BONUS`); 3% of loot slots become Fish Bones.
+- M2: Combo applies to everything scored (distance, pickups, stunts); permanent multiplier is 1 until Mission Sets exist (M5).
+- M2: Temporary end-of-run "Bonk!" card with score summary; real game over screen and dogs arrive in M3.
+- M2: Obstacles/coins/pickups use one InstancedMesh per kind with per-frame matrix updates (frustum culling off; only ~100 small instances live).

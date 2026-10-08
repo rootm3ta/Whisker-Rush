@@ -71,4 +71,8 @@ export const CAT_ANIM = {
   tailLatLag: 0.06,
   tailSwayHz: 1.3,
   tailSway: 0.16,
+  grindFront: 0.35,
+  grindBack: -0.35,
+  grindWobble: 0.08,
+  grindWobbleHz: 1.6,
 } as const;

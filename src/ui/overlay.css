@@ -5,19 +5,6 @@
   font-family: 'Nunito', system-ui, sans-serif;
   color: #2a201c;
 }
-.wr-hud {
-  position: absolute;
-  top: calc(env(safe-area-inset-top) + 12px);
-  right: 16px;
-  font-family: 'Fredoka', 'Nunito', sans-serif;
-  font-weight: 600;
-  font-size: 22px;
-  background: #fbf6ec;
-  border: 2.5px solid #2a201c;
-  border-radius: 14px 10px 13px 11px;
-  padding: 4px 12px;
-  box-shadow: 3px 3px 0 #2a201c;
-}
 .wr-card {
   position: absolute;
   left: 50%;
@@ -39,6 +26,11 @@
   letter-spacing: 0.5px;
   color: #e8863a;
   -webkit-text-stroke: 1.5px #2a201c;
+}
+.wr-body {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 800;
 }
 .wr-hint {
   margin: 6px 0 2px;

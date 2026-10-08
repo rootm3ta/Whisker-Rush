@@ -12,4 +12,21 @@ export interface GameEvents {
   fastDrop: number;
   /** Payload: new zone index. */
   zoneChange: number;
+  /** Payload: chain index (1..3). */
+  wallKick: number;
+  grindStart: number;
+  /** Payload: grind duration (s). */
+  grindEnd: number;
+  coin: number;
+  /** Payload: loot item index. */
+  loot: number;
+  fishBone: number;
+  satchelFull: number;
+  /** Payload: near misses in the current chain window. */
+  nearMiss: number;
+  stumble: number;
+  /** Payload: 1 when caught after a second stumble, 0 for a head-on crash. */
+  crash: number;
+  /** Payload: index into STUNTS. */
+  stunt: number;
 }

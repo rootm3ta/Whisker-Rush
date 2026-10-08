@@ -15,6 +15,7 @@ export interface CatDrive {
   speed: number;
   grounded: boolean;
   sliding: boolean;
+  grinding: boolean;
   running: boolean;
 }
 
@@ -31,6 +32,7 @@ export class Cat {
   private air = 0;
   private slide = 0;
   private run = 0;
+  private grind = 0;
   private squash = 0;
   private squashV = 0;
   private lastX = 0;
@@ -55,6 +57,8 @@ export class Cat {
     bus.on('jump', () => (this.squashV += A.jumpStretch));
     bus.on('land', (impact) => (this.squashV -= impact * A.landSquashPerVy));
     bus.on('laneChange', () => (this.squashV += A.laneSquash));
+    bus.on('wallKick', () => (this.squashV += A.jumpStretch * 1.2));
+    bus.on('stumble', () => (this.squashV -= A.jumpStretch));
   }
 
   update(frameDt: number, d: CatDrive): void {
@@ -65,11 +69,12 @@ export class Cat {
     this.air = damp(this.air, d.grounded ? 0 : 1, A.blendRate, frameDt);
     this.slide = damp(this.slide, d.sliding ? 1 : 0, A.blendRate, frameDt);
     this.run = damp(this.run, d.running ? 1 : 0, A.runBlendRate, frameDt);
+    this.grind = damp(this.grind, d.grinding ? 1 : 0, A.blendRate, frameDt);
 
     const hz = Math.min(d.speed / A.strideLength, A.maxGallopHz) * this.run;
     this.phase = (this.phase + hz * frameDt * TAU) % TAU;
     const p = this.phase;
-    const gait = this.run * (1 - this.air) * (1 - this.slide);
+    const gait = this.run * (1 - this.air) * (1 - this.slide) * (1 - this.grind);
 
     // Legs: gallop pairs half a cycle apart, blended toward air and slide poses.
     const sw = A.legSwing * gait;
@@ -81,6 +86,9 @@ export class Cat {
     r.legs[1].rotation.x = sw * Math.sin(p + 0.35) + airF + slF;
     r.legs[2].rotation.x = sw * Math.sin(p + Math.PI) + airB + slB;
     r.legs[3].rotation.x = sw * Math.sin(p + Math.PI + 0.35) + airB + slB;
+    // Grind: balance pose, paws gathered under the body, slight side-to-side wobble.
+    const gr = this.grind;
+    for (let i = 0; i < 4; i++) r.legs[i].rotation.x += (i < 2 ? A.grindFront : A.grindBack) * gr;
 
     // Squash and stretch spring (positive = tall and thin).
     let t = frameDt;
@@ -107,7 +115,7 @@ export class Cat {
     const vx = (d.x - this.lastX) / frameDt;
     this.lastX = d.x;
     this.latVel = damp(this.latVel, vx, A.latVelRate, frameDt);
-    r.root.rotation.z = -this.latVel * A.leanRoll;
+    r.root.rotation.z = -this.latVel * A.leanRoll + this.grind * A.grindWobble * Math.sin(this.time * A.grindWobbleHz * TAU);
     r.root.rotation.y = -this.latVel * A.leanYaw;
     r.root.position.set(d.x, d.y, 0);
     r.shadow.position.x = d.x;
