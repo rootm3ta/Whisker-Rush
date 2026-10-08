@@ -23,8 +23,9 @@ export class MarketScreen {
   private board: BoardEntry[] = [];
   private line = '';
   private haggle = 1;
-  /** First visit: Tom pays the newcomer bonus on everything. */
+  /** First visit: Tom pays the newcomer bonus on everything. Rewarded "double loot" also sets it. */
   private bonus = 1;
+  private doubledThisVisit = false;
   private haggleUsed = false;
   private haggling = false;
   private haggleStart = 0;
@@ -47,6 +48,7 @@ export class MarketScreen {
     this.haggleUsed = false;
     this.haggling = false;
     this.bonus = newcomer ? NEWCOMER.sellMul : 1;
+    this.doubledThisVisit = false;
     if (newcomer) this.line = NEWCOMER.tomIntro.join(' ');
     else this.say(stashTotal(this.ctx.save.profile) === 0 ? 'empty' : 'greet');
     this.render();
@@ -90,6 +92,9 @@ export class MarketScreen {
     const chip = (e: BoardEntry) => `<span class="${e.mul > 1 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_ITEMS[e.item].name)} x${e.mul}</span>`;
     let html = this.bonus > 1 ? `<p class="wr-chip-hot" style="display:block;text-align:center">Newcomer bonus: x${this.bonus} on everything today</p>` : '';
     html += `<p class="wr-note">Today's board (resets at midnight):</p><div>${this.board.map(chip).join('')}</div>`;
+    if (!this.doubledThisVisit && Object.keys(this.ctx.save.profile.stash).length > 0) {
+      html += `<button class="wr-btn wr-btn-sm" data-act="double" style="margin-top:6px">Watch ad: x2 on everything this visit</button>`;
+    } else if (this.doubledThisVisit) html += `<p class="wr-note"><b>x2 loot value this visit.</b></p>`;
     html += `<div class="wr-haggle">`;
     if (this.haggling) html += `<b>Stop the paw in the green!</b><div class="wr-meter"><div class="wr-needle"></div></div><button class="wr-btn wr-btn-sm" data-act="stop">Paw!</button>`;
     else if (this.haggle > 1) html += `<b>Haggled: +${Math.round((this.haggle - 1) * 100)}% on your next sale</b>`;
@@ -115,10 +120,12 @@ export class MarketScreen {
     const p = this.ctx.save.profile;
     const bucket = stockBucket(this.ctx.now());
     const left = (bucket + 1) * MARKET.secretStockHours * 3_600_000 - this.ctx.now();
+    const key = this.stockKey();
     let html = `<p class="wr-note">Restocks in ${Math.ceil(left / 3_600_000)} h.</p>`;
-    secretStock(bucket).forEach((e, i) => {
+    if (this.ctx.adsLeft('secretRefresh') > 0) html += `<button class="wr-btn wr-btn-sm" data-act="refresh">Watch ad: new stock now</button>`;
+    secretStock(key).forEach((e, i) => {
       const name = e.kind === 'accessory' ? ACCESSORIES[e.id].name : CONSUMABLES[e.id as keyof typeof CONSUMABLES].name;
-      const owned = (e.kind === 'accessory' && p.accessories.includes(e.id)) || p.secretBought.includes(`${bucket}:${e.id}`);
+      const owned = (e.kind === 'accessory' && p.accessories.includes(e.id)) || p.secretBought.includes(`${key}:${e.id}`);
       html += `<div class="wr-row"><div class="grow"><b>${esc(name)}</b><small>${e.kind === 'accessory' ? ACCESSORIES[e.id].slot : 'consumable'}</small></div>
         ${owned ? '<small>Sold out</small>' : `<button class="wr-btn wr-btn-sm" data-secret="${i}">${price(e.coins, e.fishBones)}</button>`}</div>`;
     });
@@ -167,6 +174,20 @@ export class MarketScreen {
       this.ctx.addStats({ itemsSold: r.items, socksSold: r.socks });
       this.ctx.save.write();
       this.ctx.reward('Sold!', [`${r.items} items`, `+${r.coins} coins`]);
+    } else if (d.act === 'double') {
+      void this.ctx.watchAd('doubleLoot').then((ok) => {
+        if (!ok) return;
+        this.doubledThisVisit = true;
+        this.bonus = Math.max(this.bonus, 2);
+        this.render();
+      });
+      return;
+    } else if (d.act === 'refresh') {
+      void this.ctx.watchAd('secretRefresh').then((ok) => {
+        if (ok) this.say('secret');
+        this.render();
+      });
+      return;
     } else if (d.act === 'haggle') {
       this.haggling = true;
       this.haggleUsed = true;
@@ -177,9 +198,9 @@ export class MarketScreen {
       this.haggle = 1 + bonus;
       this.say(bonus > 0 ? 'haggleGood' : 'haggleBad');
     } else if (d.secret) {
-      const bucket = stockBucket(this.ctx.now());
-      const entry = secretStock(bucket)[Number(d.secret)];
-      if (buySecret(p, entry, bucket)) {
+      const key = this.stockKey();
+      const entry = secretStock(key)[Number(d.secret)];
+      if (buySecret(p, entry, key)) {
         this.ctx.save.write();
         this.say('secret');
       } else {
@@ -196,6 +217,11 @@ export class MarketScreen {
     this.ctx.refresh();
     this.render();
   };
+
+  /** Secret Stock seed: the 8-hour bucket, shifted by ad refreshes. */
+  private stockKey(): number {
+    return stockBucket(this.ctx.now()) * 64 + this.ctx.save.profile.ads.secretShift;
+  }
 
   /** Sell All waterfall: coins rain down the screen. */
   private coinFall(n: number): void {

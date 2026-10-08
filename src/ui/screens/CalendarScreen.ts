@@ -1,6 +1,7 @@
 import { CHALLENGE, LOGIN, STREAK } from '../../data/economy';
 import { claimLogin, loginState } from '../../meta/Calendar';
 import { crateOddsPercent } from '../../meta/Economy';
+import { openCrate } from '../../meta/Rewards';
 import { ensureChallenges, missionTarget, missionText } from '../../meta/Missions';
 import { localDay } from '../../meta/Time';
 import { Sheet, esc } from '../Sheet';
@@ -52,12 +53,29 @@ export class CalendarScreen {
       html += `<div class="wr-row"><div class="grow"><b>${c.done ? 'Done: ' : ''}${esc(missionText(c.id, 0))}</b>
         <div class="wr-bar"><u style="width:${Math.min(100, (c.progress / target) * 100)}%"></u></div></div></div>`;
     }
+    const crates = this.ctx.adsLeft('freeCrate');
+    html += `<div class="wr-go-row"><button class="wr-btn" data-act="crate" ${crates > 0 ? '' : 'disabled'}>Free Catnip Crate (ad, ${crates} left today)</button><button class="wr-btn" data-act="odds">Odds</button></div>`;
     html += `<p class="wr-note"><b>Catnip Crate odds:</b> ${crateOddsPercent().map((o) => `${esc(o.label)} ${o.percent}%`).join(' · ')}</p>`;
     this.sheet.body.innerHTML = html;
   }
 
   private readonly onClick = (e: Event): void => {
     const t = (e.target as HTMLElement).closest('button');
+    if (t?.dataset.act === 'odds') {
+      this.ctx.openOdds();
+      return;
+    }
+    if (t?.dataset.act === 'crate') {
+      void this.ctx.watchAd('freeCrate').then((ok) => {
+        if (!ok) return;
+        const lines = openCrate(this.ctx.save.profile, this.ctx.rng);
+        this.ctx.save.write();
+        this.ctx.reward('Catnip Crate', lines);
+        this.ctx.refresh();
+        this.render();
+      });
+      return;
+    }
     if (t?.dataset.act !== 'claim') return;
     const lines = claimLogin(this.ctx.save.profile, localDay(this.ctx.now()), this.ctx.rng);
     if (lines) {

@@ -103,3 +103,11 @@ One line per judgment call.
 - M8: Rome music: 116 BPM swing in A minor (Am, Dm, E7, Am), accordion (detuned saws + vibrato) on the off-beats, oom-pah bass, tremolo mandolin (Karplus-Strong plucks) on a seeded pentatonic melody.
 - M8: Rome unlocks with a 3000 m best run, 20,000 coins or 40 Fish Bones. Paris, Berlin, Tokyo and Tbilisi are on the map as "coming soon". The tutorial and first run always happen in Maple Lane.
 - M8: Lucky Bells are now tracked per city (`bellsByCity`); the old `bells` list migrates to Maple Lane.
+- M9: Capacitor 8 with Swift Package Manager (no CocoaPods) for iOS; `ios/` and `android/` are committed, their build output is ignored.
+- M9: IAP via `@capgo/native-purchases` (StoreKit 2 + Play Billing in one plugin, Capacitor 8 compatible). Grants are applied locally on purchase; non-consumables restore silently at boot. No server receipt validation yet.
+- M9: Platform picked at boot (`Capacitor.isNativePlatform()`); native plugins are dynamic imports so the web bundle and mocks stay unchanged.
+- M9: Save on native uses Capacitor Preferences, preloaded into memory before the game starts and written through, so `Storage` stays synchronous.
+- M9: Privacy order: age gate (13+), UMP consent, then ATT soft pre-prompt and system prompt after session 2. Under-13 gets child-directed, non-personalized ads and no ATT.
+- M9: No Ads turns every rewarded placement into a free reward (still capped per day), as GAME_DESIGN 11.2 suggests.
+- M9: Interstitials: never in the first 4 sessions, every 3rd run at most, 180 s gap, never after a new best. Crates are never sold for money; odds are shown on a dedicated screen.
+- M9: Ad Zoomies head start offered on the boost bar (2/day); secret stock refresh by ad shifts the seeded stock instead of rerolling the whole shop.

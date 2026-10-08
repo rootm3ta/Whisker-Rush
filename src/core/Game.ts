@@ -14,8 +14,6 @@ import { DogPack, PackMode } from '../entities/DogPack';
 import { RunSession } from '../gameplay/RunSession';
 import { Save } from '../meta/Save';
 import type { IAds } from '../platform/Ads';
-import { MockAds } from '../platform/MockAds';
-import { LocalStorageAdapter } from '../platform/Storage';
 import { CameraRig } from '../render/CameraRig';
 import { BossView } from '../render/BossView';
 import { PowerFx } from '../render/PowerFx';
@@ -47,8 +45,17 @@ import { canClaimTier, runStamps } from '../meta/Pass';
 import { loginState } from '../meta/Calendar';
 import { localDay } from '../meta/Time';
 import { Comic } from '../ui/Comic';
+import type { Platform } from '../platform';
+import type { IHaptics } from '../platform/Haptics';
+import type { IIAP } from '../platform/IAP';
+import type { IPrivacy } from '../platform/Privacy';
+import { ShopScreen } from '../ui/screens/ShopScreen';
+import { OddsScreen } from '../ui/screens/OddsScreen';
+import { ask } from '../ui/Sheet';
+import { AD_RULES, PRODUCTS, type RewardedPlacement } from '../data/monetization';
+import { canShowInterstitial, personalizedAds, recordInterstitial, recordRewarded, recordRunForAds, rewardedLeft } from '../meta/AdPolicy';
+import { fillTipJar, restoreOwned } from '../meta/Shop';
 import { Audio } from '../audio/Audio';
-import { WebHaptics } from '../platform/Haptics';
 import { JuiceFx } from '../render/JuiceFx';
 import { PostFx, QualityProbe } from '../render/PostFx';
 import { FlyFx } from '../ui/FlyFx';
@@ -81,7 +88,7 @@ export class Game {
   private readonly scene = new THREE.Scene();
   private readonly rig = new CameraRig();
   private readonly run = new RunSession(this.bus);
-  private readonly save = new Save(new LocalStorageAdapter());
+  private readonly save: Save;
   private readonly ads: IAds;
   private track: Track;
   private readonly env: Environment;
@@ -121,7 +128,12 @@ export class Game {
   private replaying = false;
   private tutorialDoneT = -1;
   private readonly audio: Audio;
-  private readonly haptics = new WebHaptics();
+  private readonly haptics: IHaptics & { enabled: boolean };
+  private readonly iap: IIAP;
+  private readonly privacy: IPrivacy;
+  private readonly shop: ShopScreen;
+  private readonly odds: OddsScreen;
+  private monetizationStarted = false;
   private readonly juice: JuiceFx;
   private readonly postFx: PostFx;
   private readonly quality = new QualityProbe();
@@ -150,7 +162,14 @@ export class Game {
   private crashT = 0;
   private popped = false;
 
-  constructor(private readonly host: HTMLElement) {
+  constructor(
+    private readonly host: HTMLElement,
+    platform: Platform,
+  ) {
+    this.save = new Save(platform.storage);
+    this.haptics = platform.haptics;
+    this.iap = platform.iap;
+    this.privacy = platform.privacy;
     // SMAA in the post chain replaces MSAA; the composer needs no stencil.
     this.renderer = new THREE.WebGLRenderer({ antialias: false, stencil: false, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDER.maxDpr));
@@ -163,7 +182,7 @@ export class Game {
     this.scene.add(this.track.root, this.fieldView.root, this.cat.holder, this.cat.shadow, this.pack.root, this.fx.root);
     this.scene.add(this.powerFx.root, this.bossView.root);
 
-    this.ads = new MockAds(host);
+    this.ads = platform.ads;
     this.overlay = new Overlay(host);
     this.hud = new Hud(host);
     this.powerHud = new PowerHud(host, {
@@ -188,6 +207,7 @@ export class Game {
     this.homeHud = new HomeHud(host, {
       run: () => this.startRun(),
       settings: () => this.screens.settings.open(),
+      shop: () => this.shop.open(),
       pass: () => this.screens.pass.open(),
     });
     const ctx: MetaCtx = {
@@ -199,8 +219,14 @@ export class Game {
       reward: (title, lines) => popup(host, title, lines),
       addStats: (stats) => this.applyMetaStats(stats),
       sound: (id) => this.audio.play(id),
+      watchAd: (placement) => this.watchRewarded(placement),
+      adsLeft: (placement) => rewardedLeft(this.save.profile, placement, Date.now()),
+      openShop: () => this.shop.open(),
+      openOdds: () => this.odds.open(),
     };
     this.market = new MarketScreen(ctx);
+    this.shop = new ShopScreen(ctx, this.iap);
+    this.odds = new OddsScreen(ctx);
     this.map = new MapScreen(ctx, () => this.prepareRun());
     this.screens = {
       upgrades: new UpgradesScreen(ctx),
@@ -277,6 +303,7 @@ export class Game {
             this.refreshMeta();
             const hat = freeHatPending(this.save.profile);
             this.homeHud.setHighlight(hat ? 'wardrobe' : null, hat ? 'Free hat!' : '');
+            void this.startMonetization();
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
           exit: () => {
@@ -293,7 +320,7 @@ export class Game {
             if (this.freshRun) {
               this.freshRun = false;
               const inv = this.save.profile.inventory;
-              this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec);
+              this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec, this.adHeadStartOk());
             }
           },
           update: (dt) => {
@@ -432,7 +459,7 @@ export class Game {
     this.hud.visible = true;
     this.powerHud.visible = true;
     const inv = this.save.profile.inventory;
-    this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec);
+    this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec, this.adHeadStartOk());
     this.hud.stamp(TUTORIAL.nowForReal, STAMP_COLORS.nearMiss);
   }
 
@@ -570,10 +597,75 @@ export class Game {
     this.powerHud.setRoombaCount(inv.roomba);
   }
 
+  private adHeadStartOk(): boolean {
+    const p = this.save.profile;
+    return p.inventory.zoomies <= 0 && rewardedLeft(p, 'headStart', Date.now()) > 0;
+  }
+
+  /**
+   * Rewarded ads go through here: placement caps from AdPolicy, and with No Ads the
+   * reward is simply granted (GAME_DESIGN 11.3). Resolves true when the reward is earned.
+   */
+  private async watchRewarded(placement: RewardedPlacement): Promise<boolean> {
+    const p = this.save.profile;
+    if (rewardedLeft(p, placement, Date.now()) <= 0) return false;
+    const ok = p.iap.noAds ? true : await this.ads.showRewarded(placement);
+    if (ok) {
+      recordRewarded(p, placement, Date.now());
+      this.save.write();
+    }
+    return ok;
+  }
+
+  /**
+   * Once per launch, at Home: age gate, UMP consent (EU), the ATT soft pre-prompt then the
+   * system prompt (iOS, after session 2), ads init, store prices and restoring purchases.
+   */
+  private async startMonetization(): Promise<void> {
+    if (this.monetizationStarted) return;
+    this.monetizationStarted = true;
+    const p = this.save.profile;
+    if (!p.flags.firstRunDone) {
+      this.monetizationStarted = false;
+      return;
+    }
+    if (!p.privacy.ageGateDone) {
+      const i = await ask(this.host, 'Quick question', ['How old are you?', 'Younger players only see kid-safe, non-personalised ads.'], [`${AD_RULES.ageGate} or older`, `Under ${AD_RULES.ageGate}`]);
+      p.privacy.ageGateDone = true;
+      p.privacy.under13 = i === 1;
+      this.save.write();
+    }
+    await this.privacy.gatherConsent();
+    let tracking = await this.privacy.trackingStatus();
+    if (this.privacy.isIOS && tracking === 'notDetermined' && !p.privacy.under13 && p.sessions >= AD_RULES.attAfterSessions && !p.privacy.attAsked) {
+      await ask(this.host, 'Keep Whisker Rush free', ['Ads pay for Miso\'s sausages.', 'On the next screen, allowing tracking means fewer, more relevant ads. Either choice is fine.'], ['Continue']);
+      p.privacy.attAsked = true;
+      this.save.write();
+      tracking = await this.privacy.requestTracking();
+    }
+    await this.ads.init({ personalized: personalizedAds(p, tracking), childDirected: p.privacy.under13 });
+    await this.iap.init(Object.values(PRODUCTS).map((d) => d.sku));
+    const restored = restoreOwned(p, await this.iap.restore(), this.metaRng);
+    if (restored.length) {
+      this.save.write();
+      popup(this.host, 'Purchases restored', restored);
+      this.refreshMeta();
+    }
+  }
+
   private useBoost(id: PowerUpId): void {
     if (!this.fsm.is('run')) return;
     const inv = this.save.profile.inventory;
     const key = id === 'zoomies' ? 'zoomies' : 'fishRocket';
+    if (inv[key] <= 0 && id === 'zoomies' && this.adHeadStartOk()) {
+      // Free head start for a rewarded ad (2 per day). The run pauses while the ad plays.
+      this.fsm.go('paused');
+      void this.watchRewarded('headStart').then((ok) => {
+        this.fsm.go('run');
+        if (ok) this.run.activatePowerUp('zoomies');
+      });
+      return;
+    }
     if (inv[key] <= 0) return;
     inv[key]--;
     this.save.write();
@@ -613,7 +705,7 @@ export class Game {
     if (opt.kind === 'ad') {
       this.gameOver.hide();
       this.fsm.go('reviving');
-      void this.ads.showRewarded('Revive').then((ok) => {
+      void this.watchRewarded('revive').then((ok) => {
         if (ok) this.doRevive('ad');
         else this.fsm.go('gameOver');
       });
@@ -662,7 +754,14 @@ export class Game {
     const overflow = addToStash(p, loot);
     p.revives += run.revives.total;
     this.applyMetaStats(run.stats.snapshot(distance, run.score.coins));
-    this.save.recordRun(run.score.points, distance);
+    fillTipJar(p, distance);
+    recordRunForAds(p);
+    const newBest = this.save.recordRun(run.score.points, distance);
+    // Post-run interstitial: never in the first sessions, never after a new best, capped.
+    if (canShowInterstitial(p, Date.now(), newBest)) {
+      recordInterstitial(p, Date.now());
+      void this.ads.showInterstitial();
+    }
     this.fx.setDizzy(false);
     const first = run.config.firstRun;
     if (first) p.flags.firstRunDone = true;

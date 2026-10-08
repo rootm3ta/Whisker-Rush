@@ -6,6 +6,7 @@ export interface HomeHudActions {
   run(): void;
   settings(): void;
   pass(): void;
+  shop(): void;
 }
 
 /** Home overlay: currencies, settings gear, Paw Pass ribbon, big RUN paw, object labels and Miso's bubble. */
@@ -31,6 +32,7 @@ export class HomeHud {
         <span class="wr-pill">${ICON.coin}<b class="wr-c">0</b></span>
         <span class="wr-pill">${ICON.bone}<b class="wr-b">0</b></span>
         <span class="wr-pill wr-mult">x1</span>
+        <button class="wr-shop" aria-label="Shop">Shop</button>
         <button class="wr-gear" aria-label="Settings">${ICON.gear}</button>
       </div>
       <button class="wr-ribbon">Paw Pass <b>0</b></button>
@@ -49,7 +51,11 @@ export class HomeHud {
     this.bubble = root.querySelector('.wr-miso-bubble')!;
     root.querySelectorAll<HTMLElement>('.wr-label').forEach((el) => this.labels.set(el.dataset.a as HomeAction, el));
     const stop = (e: Event) => e.stopPropagation();
-    for (const sel of ['.wr-runpaw', '.wr-gear', '.wr-ribbon']) {
+    root.querySelector('.wr-shop')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      actions.shop();
+    });
+    for (const sel of ['.wr-runpaw', '.wr-gear', '.wr-ribbon', '.wr-shop']) {
       const el = root.querySelector(sel)!;
       el.addEventListener('pointerdown', stop);
       el.addEventListener('pointerup', stop);

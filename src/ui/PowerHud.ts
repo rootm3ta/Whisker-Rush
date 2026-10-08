@@ -97,11 +97,13 @@ export class PowerHud {
     this.roombaBtn.disabled = n <= 0;
   }
 
-  showBoosts(zoomies: number, rocket: number, sec: number): void {
+  /** `adZoomies`: offer a free Zoomies head start for a rewarded ad when the player has none. */
+  showBoosts(zoomies: number, rocket: number, sec: number, adZoomies = false): void {
     const [z, r] = this.boosts.querySelectorAll<HTMLButtonElement>('.wr-boost');
-    z.textContent = `${POWERUPS.zoomies.name} x${zoomies}`;
+    z.textContent = zoomies > 0 ? `${POWERUPS.zoomies.name} x${zoomies}` : `${POWERUPS.zoomies.name} (watch ad)`;
     r.textContent = `${POWERUPS.fishRocket.name} x${rocket}`;
-    z.hidden = zoomies <= 0;
+    z.hidden = zoomies <= 0 && !adZoomies;
+    zoomies = Math.max(zoomies, adZoomies ? 1 : 0);
     r.hidden = rocket <= 0;
     this.boosts.hidden = zoomies <= 0 && rocket <= 0;
     this.boostLeft = sec;

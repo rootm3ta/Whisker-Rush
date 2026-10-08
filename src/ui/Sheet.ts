@@ -76,6 +76,28 @@ export function popup(host: HTMLElement, title: string, lines: readonly string[]
   host.appendChild(el);
 }
 
+/** A modal question with sketchbook buttons; resolves the chosen button index. */
+export function ask(host: HTMLElement, title: string, lines: readonly string[], buttons: readonly string[]): Promise<number> {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'wr-popup';
+    el.innerHTML = `<div class="wr-popup-card"><h3>${esc(title)}</h3>${lines.map((l) => `<p>${esc(l)}</p>`).join('')}${buttons
+      .map((b, i) => `<button class="wr-btn ${i === 0 ? 'wr-btn-main' : ''}" data-i="${i}" style="margin-top:8px;width:100%">${esc(b)}</button>`)
+      .join('')}</div>`;
+    for (const ev of ['pointerdown', 'pointerup'] as const) el.addEventListener(ev, (e) => e.stopPropagation());
+    overlays.open++;
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = (e.target as HTMLElement).closest('button')?.dataset.i;
+      if (i === undefined) return;
+      el.remove();
+      overlays.open--;
+      resolve(Number(i));
+    });
+    host.appendChild(el);
+  });
+}
+
 /** Press squash on every button is CSS; this adds the price chip markup. */
 export function price(coins?: number, fishBones?: number): string {
   if (fishBones) return `<span class="wr-price">${fishBones} ${ICON.bone}</span>`;

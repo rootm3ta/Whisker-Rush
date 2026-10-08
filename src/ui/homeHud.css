@@ -31,8 +31,21 @@
 .wr-mult {
   background: #f2c14e;
 }
-.wr-gear {
+.wr-shop {
   margin-left: auto;
+  pointer-events: auto;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  background: #9fe08a;
+  border: 2.5px solid #2a201c;
+  border-radius: 13px 10px 14px 11px;
+  box-shadow: 2px 2px 0 #2a201c;
+  padding: 5px 11px;
+  cursor: pointer;
+  filter: url(#wr-wobble);
+}
+.wr-gear {
   pointer-events: auto;
   background: #fbf6ec;
   border: 2.5px solid #2a201c;

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Whisker Rush</string>
+    <string name="title_activity_main">Whisker Rush</string>
+    <string name="package_name">com.whiskerrush.game</string>
+    <string name="custom_url_scheme">com.whiskerrush.game</string>
+</resources>

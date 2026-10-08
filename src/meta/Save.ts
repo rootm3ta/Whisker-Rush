@@ -40,18 +40,28 @@ export interface Profile {
   missions: { set: number; multiplier: number; active: MissionSlot[] };
   challenges: { day: number; list: (MissionSlot & { done: boolean })[] };
   login: { lastDay: number; streak: number; next: number; streakRewarded: boolean };
-  pass: { stamps: number; claimed: number[] };
+  pass: { stamps: number; claimed: number[]; premium?: boolean; premiumClaimed?: number[] };
   /** Secret Stock purchases as "bucket:id". */
   secretBought: string[];
   settings: { music: boolean; sfx: boolean; haptics: boolean };
   /** First-session onboarding flags (GAME_DESIGN 8.1). */
   flags: { introSeen: boolean; tutorialDone: boolean; firstRunDone: boolean; tomIntroDone: boolean; freeHatClaimed: boolean };
   sessions: number;
+  /** First launch time (Starter Pack window). */
+  firstSeen: number;
+  /** Rewarded/interstitial bookkeeping (GAME_DESIGN 11.2). */
+  ads: { day: number; counts: Record<string, number>; secretRefreshAt: number; secretShift: number; lastInterstitialAt: number; runsSinceInterstitial: number };
+  /** Purchases. Non-consumables are restored from the store on native. */
+  iap: { noAds: boolean; coinDoubler: boolean; owned: string[] };
+  tipJar: number;
+  privacy: { ageGateDone: boolean; under13: boolean; attAsked: boolean };
   totals: Partial<Record<MissionStat, number>>;
 }
 
 const KEY = 'wr.save';
 const LEGACY_KEYS = ['wr.save.v1'];
+/** Every key the save may live under (native storage preloads these). */
+export const SAVE_KEYS = [KEY, ...LEGACY_KEYS];
 
 export function defaultProfile(): Profile {
   return {
@@ -84,6 +94,11 @@ export function defaultProfile(): Profile {
     settings: { music: true, sfx: true, haptics: true },
     flags: { introSeen: false, tutorialDone: false, firstRunDone: false, tomIntroDone: false, freeHatClaimed: false },
     sessions: 0,
+    firstSeen: Date.now(),
+    ads: { day: -1, counts: {}, secretRefreshAt: 0, secretShift: 0, lastInterstitialAt: 0, runsSinceInterstitial: 0 },
+    iap: { noAds: false, coinDoubler: false, owned: [] },
+    tipJar: 10,
+    privacy: { ageGateDone: false, under13: false, attAsked: false },
     totals: {},
   };
 }
@@ -100,6 +115,9 @@ export function migrate(raw: unknown): Profile {
   merged.login = { ...base.login, ...(p.login ?? {}) };
   merged.missions = { ...base.missions, ...(p.missions ?? {}) };
   merged.pass = { ...base.pass, ...(p.pass ?? {}) };
+  merged.ads = { ...base.ads, ...(p.ads ?? {}) };
+  merged.iap = { ...base.iap, ...(p.iap ?? {}) };
+  merged.privacy = { ...base.privacy, ...(p.privacy ?? {}) };
   // Players from before onboarding existed have already played: skip the first-session flow.
   merged.flags = p.flags ? { ...base.flags, ...p.flags } : { ...base.flags, ...(p.runs ? { introSeen: true, tutorialDone: true, firstRunDone: true, tomIntroDone: true } : {}) };
   if (!merged.cats.includes('miso')) merged.cats = ['miso', ...merged.cats];

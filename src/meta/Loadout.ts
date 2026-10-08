@@ -58,7 +58,7 @@ export function computeRunConfig(p: Profile): RunConfig {
     jumpHeight: RUNNER.jumpHeight * (1 + UPGRADE_FX.jumpPerLevel * (spring - 1)),
     maxKicks: WALL_KICK.maxChain + (spring >= UPGRADES.pounceSpring.max ? 1 : 0),
     luck: 1 + UPGRADE_FX.luckyPerLevel * (lvl('luckyWhiskers') - 1),
-    coinMul: setCoinBonus(p) * (p.cat === 'biscuit' ? CAT_PASSIVES.biscuitCoinMul : 1),
+    coinMul: setCoinBonus(p) * (p.cat === 'biscuit' ? CAT_PASSIVES.biscuitCoinMul : 1) * (p.iap.coinDoubler ? 2 : 1),
     catDoorMul: p.cat === 'noir' ? CAT_PASSIVES.noirCatDoorMul : 1,
     napBonusSec: p.cat === 'sushi' ? CAT_PASSIVES.sushiNapBonusSec : 0,
     startBubble: p.cat === 'pixel',
