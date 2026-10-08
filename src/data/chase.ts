@@ -64,4 +64,5 @@ export const ADS = {
 export const ECONOMY_START = {
   coins: 0,
   fishBones: 2,
+  inventory: { roomba: 2, zoomies: 1, fishRocket: 1 },
 } as const;

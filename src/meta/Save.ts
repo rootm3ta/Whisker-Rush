@@ -1,3 +1,4 @@
+import { ABILITY, type AbilityId } from '../data/abilities';
 import { ECONOMY_START } from '../data/chase';
 import type { IStorage } from '../platform/Storage';
 
@@ -9,12 +10,33 @@ export interface Profile {
   fishBones: number;
   runs: number;
   revives: number;
+  /** Consumables: Roomba rides and start boosts. */
+  inventory: { roomba: number; zoomies: number; fishRocket: number };
+  ability: AbilityId;
+  /** Lucky Bell ids found in Maple Lane. */
+  bells: number[];
+  goldenCollar: boolean;
+  /** Daily Hunt: UTC day number and letter indices found that day. */
+  hunt: { day: number; found: number[] };
 }
 
 const KEY = 'wr.save.v1';
 
 export function defaultProfile(): Profile {
-  return { version: 1, bestScore: 0, bestDistance: 0, coins: ECONOMY_START.coins, fishBones: ECONOMY_START.fishBones, runs: 0, revives: 0 };
+  return {
+    version: 1,
+    bestScore: 0,
+    bestDistance: 0,
+    coins: ECONOMY_START.coins,
+    fishBones: ECONOMY_START.fishBones,
+    runs: 0,
+    revives: 0,
+    inventory: { ...ECONOMY_START.inventory },
+    ability: ABILITY.default,
+    bells: [],
+    goldenCollar: false,
+    hunt: { day: -1, found: [] },
+  };
 }
 
 /** Versioned player profile behind an IStorage. Extended with inventory and upgrades in M5. */

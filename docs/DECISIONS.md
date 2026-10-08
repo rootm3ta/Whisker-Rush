@@ -45,3 +45,18 @@ One line per judgment call.
 - M3: Share is a placeholder: Web Share API when present, else copy text to clipboard.
 - M3: Boss Chase (every 3000 m) is not in this milestone's scope; left for a later pass.
 - M3: `?debug` exposes the Game instance as `window.__wr` for headless checks.
+- M4: A shared `Modifiers` object is reset each step and written by power-ups, Roomba and abilities (speed, invincible, pass-low, pickup reach, coin and score multipliers, shield); Runner, Collision and scoring only read it.
+- M4: Power-ups spawn in the clear gaps between patterns (22% per gap), never inside patterns; Mystery Fish 7%, Daily Hunt letters 12%. Zoomies and Fish Rocket are start-only boosts offered for 3.5 s at run start from inventory.
+- M4: New players start with 2 Roombas, 1 Zoomies, 1 Fish Rocket so everything is reachable before the shop (M5).
+- M4: Double-tap (Space) fires the equipped ability when charged, otherwise starts a Roomba; E and the on-screen button also start a Roomba. One gesture, no dead taps.
+- M4: Shields resolve in order: invincible (Catnip, Zoomies, Rocket, Pounce dash) smashes the obstacle, then Milk Bubble, then Roomba; each absorbed hit grants 1.2 s grace.
+- M4: Cardboard Box passes through bodies up to 1.1 m tall (trash cans, hedges, bikes, sprinklers, fences, parcels), not cars or walls, and keeps the pack off your trail.
+- M4: Laser Dot picks the lane with no blocking body over the next 26 m (coins break ties) and doubles score while you are in it.
+- M4: Abilities charge from combo gains (1.2 combo total = full). Pounce is disabled during a Boss Chase (the truck is ahead). Purr Field reaches the cat's lane plus the neighbor lanes at any height.
+- M4: Nap Time freezes the simulation for 2 s (screen desaturates), then glides to the safest lane with 1 s grace.
+- M4: Lucky Bells live in `bell` slots on high-layer spots (35% fill chance), persist in the save, and all 9 grant the golden collar and +5% coins.
+- M4: Cat Doors are a rare hedge wall with glowing flaps; changing lane into the flap enters a 10 s Secret Alley (violet fog, coin river, rare-or-better loot, no obstacles).
+- M4: Daily Hunt word is picked by UTC day from a fixed list; progress resets each day; completion pays 500 coins and 1 Fish Bone straight to the profile.
+- M4: Boss Chase every 3000 m pauses the spawner; Duke's truck holds 30 m ahead and throws parcels/cans/bikes that arc onto the road; 10 dodges and he swerves off the road, dropping a chest (250 coins, 1 Fish Bone, rare+ loot).
+- M4: Catnip "psychedelic tint" and Nap desaturation are CSS filters on the canvas; speed lines are a CSS overlay. Cheap, no extra render passes.
+- M4: Easter eggs (9:09 winking statue, Ada's suitcase, butcher cameo) were not in this milestone's request; left for the juice pass.

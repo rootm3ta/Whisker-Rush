@@ -7,6 +7,10 @@ export class Score {
   fishBones = 0;
   multiplier = 1;
   combo: number = COMBO.min;
+  /** Temporary multiplier from power-ups (Laser Dot path bonus). */
+  tempMul = 1;
+  /** Called with the amount actually gained on each combo bump. */
+  onBump: ((gain: number) => void) | null = null;
   private sinceGain = 0;
 
   reset(multiplier = 1): void {
@@ -15,20 +19,22 @@ export class Score {
     this.fishBones = 0;
     this.multiplier = multiplier;
     this.combo = COMBO.min;
+    this.tempMul = 1;
     this.sinceGain = 0;
   }
 
   addDistance(m: number): void {
-    this.points += m * POINTS.perMeter * this.multiplier * this.combo;
+    this.points += m * POINTS.perMeter * this.multiplier * this.combo * this.tempMul;
   }
 
   award(base: number): void {
-    this.points += base * this.multiplier * this.combo;
+    this.points += base * this.multiplier * this.combo * this.tempMul;
   }
 
   bumpCombo(amount: number): void {
     this.combo = Math.min(COMBO.max, this.combo + amount);
     this.sinceGain = 0;
+    this.onBump?.(amount);
   }
 
   breakCombo(): void {

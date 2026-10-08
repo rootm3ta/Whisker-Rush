@@ -15,11 +15,15 @@ export class ScoreKeeper {
   private readonly missTimes = new Float64Array(STUNT_RULES.dodgeChainCount);
   private missCount = 0;
   private grinding = false;
+  /** Coins per coin pickup (x2 Treats) times the Lucky Bell bonus. */
+  coinMul = 1;
+  private coinFrac = 0;
 
   constructor(
     private readonly bus: EventBus<GameEvents>,
     private readonly score: Score,
   ) {
+    score.onBump = (gain) => bus.emit('comboGain', gain);
     bus.on('coin', () => this.onCoin());
     bus.on('loot', (item) => score.award(RARITIES[LOOT_MAPLE_LANE[item].rarity].points));
     bus.on('fishBone', () => {
@@ -53,6 +57,8 @@ export class ScoreKeeper {
     this.streak = 0;
     this.missCount = 0;
     this.grinding = false;
+    this.coinMul = 1;
+    this.coinFrac = 0;
   }
 
   /** Records a near miss; returns how many are in the current chain window. */
@@ -85,8 +91,11 @@ export class ScoreKeeper {
 
   private onCoin(): void {
     const s = this.score;
-    s.coins++;
-    s.award(POINTS.coin);
+    const v = this.coinMul + this.coinFrac;
+    const whole = Math.floor(v);
+    this.coinFrac = v - whole;
+    s.coins += whole;
+    s.award(POINTS.coin * this.coinMul);
     this.streak = this.time - this.lastCoinAt <= COMBO.coinStreakGap ? this.streak + 1 : 1;
     this.lastCoinAt = this.time;
     if (this.streak % COMBO.coinStreakEvery === 0) s.bumpCombo(COMBO.coinStreak);

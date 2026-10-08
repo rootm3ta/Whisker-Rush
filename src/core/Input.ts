@@ -1,7 +1,7 @@
 import { INPUT } from '../data/runner';
 import { ActionBuffer } from './ActionBuffer';
 
-export const Action = { Left: 0, Right: 1, Up: 2, Down: 3, Ability: 4, Pause: 5 } as const;
+export const Action = { Left: 0, Right: 1, Up: 2, Down: 3, Ability: 4, Pause: 5, Roomba: 6 } as const;
 export type ActionId = (typeof Action)[keyof typeof Action];
 
 const KEYS: Record<string, ActionId> = {
@@ -14,6 +14,7 @@ const KEYS: Record<string, ActionId> = {
   ArrowDown: Action.Down,
   KeyS: Action.Down,
   Space: Action.Ability,
+  KeyE: Action.Roomba,
   KeyP: Action.Pause,
   Escape: Action.Pause,
 };

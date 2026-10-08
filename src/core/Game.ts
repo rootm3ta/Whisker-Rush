@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { CITIES } from '../data/cities';
 import { CRASH } from '../data/chase';
+import { ABILITIES } from '../data/abilities';
+import { BOSS } from '../data/boss';
+import { POWERUPS, POWERUP_FX, POWERUP_IDS, type PowerUpId } from '../data/powerups';
+import { CAT_DOOR } from '../data/secrets';
 import { CAMERA } from '../data/runner';
 import { RENDER, SIM } from '../data/render';
 import { REFLEX, STUNTS } from '../data/scoring';
@@ -13,6 +17,10 @@ import type { IAds } from '../platform/Ads';
 import { MockAds } from '../platform/MockAds';
 import { LocalStorageAdapter } from '../platform/Storage';
 import { CameraRig } from '../render/CameraRig';
+import { BossView } from '../render/BossView';
+import { PowerFx } from '../render/PowerFx';
+import { PowerHud } from '../ui/PowerHud';
+import { BossPhase } from '../gameplay/Boss';
 import { CrashFx } from '../render/CrashFx';
 import { FieldView } from '../render/FieldView';
 import { GameOver } from '../ui/GameOver';
@@ -43,6 +51,13 @@ export class Game {
   private readonly cat: Cat;
   private readonly pack = new DogPack();
   private readonly fx = new CrashFx();
+  private readonly powerFx = new PowerFx();
+  private readonly bossView = new BossView();
+  private readonly powerHud: PowerHud;
+  private freshRun = false;
+  private readonly fogBase = new THREE.Color();
+  private skyBase: THREE.Texture | THREE.Color | null = null;
+  private readonly alleyColor = new THREE.Color(CAT_DOOR.fog);
   private readonly input: Input;
   private readonly overlay: Overlay;
   private readonly hud: Hud;
@@ -53,6 +68,7 @@ export class Game {
   private readonly drive: CatDrive = {
     x: 0, y: 0, vy: 0, speed: 0, grounded: true, sliding: false, grinding: false,
     running: false, hidden: false, dizzy: false, flicker: false,
+    boxed: false, nap: false, loaf: false, lift: 0,
   };
   private simTime = 0;
   private timeScale = 1;
@@ -71,10 +87,18 @@ export class Game {
     this.track = new Track(palette);
     this.cat = new Cat(this.bus);
     this.scene.add(this.track.root, this.fieldView.root, this.cat.rig.root, this.cat.rig.shadow, this.pack.root, this.fx.root);
+    this.scene.add(this.powerFx.root, this.bossView.root);
+    this.fogBase.copy((this.scene.fog as THREE.Fog).color);
+    this.skyBase = this.scene.background as THREE.Texture;
 
     this.ads = new MockAds(host);
     this.overlay = new Overlay(host);
     this.hud = new Hud(host);
+    this.powerHud = new PowerHud(host, {
+      ability: () => this.useAbility(),
+      roomba: () => this.useRoomba(),
+      boost: (id) => this.useBoost(id),
+    });
     this.gameOver = new GameOver(host, {
       revive: () => this.tryRevive(),
       share: () => this.share(),
@@ -91,11 +115,19 @@ export class Game {
         boot: {},
         home: {
           enter: () => {
-            this.run.reset();
+            const p = this.save.profile;
+            this.run.reset(undefined, p);
             this.track.reset();
             this.input.buffer.clear();
             this.hud.reset();
             this.hud.visible = false;
+            this.powerHud.visible = false;
+            this.powerHud.setAbility(p.ability);
+            this.powerHud.setRoombaCount(p.inventory.roomba);
+            this.powerHud.setHunt(this.run.secrets.word, p.hunt.found);
+            this.fieldView.word = this.run.secrets.word;
+            this.setAlleyLook(false);
+            this.freshRun = true;
             this.gameOver.hide();
             this.overlay.showHome();
           },
@@ -106,6 +138,12 @@ export class Game {
             this.overlay.hide();
             this.gameOver.hide();
             this.hud.visible = true;
+            this.powerHud.visible = true;
+            if (this.freshRun) {
+              this.freshRun = false;
+              const inv = this.save.profile.inventory;
+              this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec);
+            }
           },
           update: (dt) => {
             this.input.buffer.process(this.simTime, this.handleRunAction);
@@ -125,6 +163,8 @@ export class Game {
             this.timeScale = 1;
             this.slowLeft = 0;
             this.hud.setRush(false);
+            this.powerHud.hideBoosts();
+            this.powerHud.visible = false;
             const r = this.run.runner;
             this.fx.startCloud(r.x, r.y, 0);
           },
@@ -202,6 +242,73 @@ export class Game {
       this.hud.stamp(UI_TEXT.packRush, STAMP_COLORS.nearMiss);
     });
     b.on('packRushEnd', () => this.hud.setRush(false));
+    const stamp = (t: string, c: string = STAMP_COLORS.stunt) => this.hud.stamp(t, c);
+    b.on('powerStart', (i) => stamp(POWERUPS[POWERUP_IDS[i]].name.toUpperCase() + '!', STAMP_COLORS.loot));
+    b.on('shieldPop', (k) => {
+      stamp(k === 0 ? UI_TEXT.pop : UI_TEXT.roombaOff, STAMP_COLORS.warn);
+      this.rig.addShake(0.15);
+    });
+    b.on('smash', () => this.rig.addShake(0.08));
+    b.on('ability', (i) => {
+      const id = Object.keys(ABILITIES)[i] as keyof typeof ABILITIES;
+      stamp(ABILITIES[id].name.toUpperCase() + '!', STAMP_COLORS.nearMiss);
+      const r = this.run.runner;
+      if (id === 'hiss') this.fx.burst(r.x, r.y, 0, ABILITIES.hiss.color);
+      if (id === 'pounce') this.rig.addKick(8);
+    });
+    b.on('bell', () => stamp(UI_TEXT.bell.replace('{n}', String(this.run.secrets.bellsFound)), STAMP_COLORS.loot));
+    b.on('allBells', () => stamp(UI_TEXT.allBells, STAMP_COLORS.loot));
+    b.on('letter', () => this.powerHud.setHunt(this.run.secrets.word, this.save.profile.hunt.found));
+    b.on('huntComplete', () => stamp(UI_TEXT.huntDone, STAMP_COLORS.loot));
+    b.on('mysteryFish', () => stamp(UI_TEXT.mystery, STAMP_COLORS.loot));
+    b.on('gag', (g) => stamp(UI_TEXT.gags[g], STAMP_COLORS.warn));
+    b.on('catDoor', () => {
+      stamp(UI_TEXT.catDoor, STAMP_COLORS.loot);
+      this.setAlleyLook(true);
+    });
+    b.on('alleyEnd', () => this.setAlleyLook(false));
+    b.on('bossStart', () => stamp(UI_TEXT.bossStart, STAMP_COLORS.nearMiss));
+    b.on('bossDefeated', () => {
+      stamp(UI_TEXT.bossDown, STAMP_COLORS.stunt);
+      this.rig.addShake(0.25);
+    });
+    b.on('chest', () => stamp(UI_TEXT.chest, STAMP_COLORS.loot));
+  }
+
+  /** Secret Alley: dusky violet fog and sky while inside. */
+  private setAlleyLook(on: boolean): void {
+    const fog = this.scene.fog as THREE.Fog;
+    if (on) {
+      fog.color.copy(this.alleyColor);
+      this.scene.background = this.alleyColor;
+    } else {
+      fog.color.copy(this.fogBase);
+      this.scene.background = this.skyBase;
+    }
+  }
+
+  private useAbility(): void {
+    if (!this.fsm.is('run')) return;
+    this.run.activateAbility();
+  }
+
+  private useRoomba(): void {
+    if (!this.fsm.is('run')) return;
+    const inv = this.save.profile.inventory;
+    if (inv.roomba <= 0 || !this.run.startRoomba()) return;
+    inv.roomba--;
+    this.save.write();
+    this.powerHud.setRoombaCount(inv.roomba);
+  }
+
+  private useBoost(id: PowerUpId): void {
+    if (!this.fsm.is('run')) return;
+    const inv = this.save.profile.inventory;
+    const key = id === 'zoomies' ? 'zoomies' : 'fishRocket';
+    if (inv[key] <= 0) return;
+    inv[key]--;
+    this.save.write();
+    this.run.activatePowerUp(id);
   }
 
   private showGameOver(): void {
@@ -291,7 +398,16 @@ export class Game {
       this.fsm.go('paused');
       return true;
     }
-    if (a === Action.Ability) return true; // Active abilities arrive in M4.
+    if (a === Action.Ability) {
+      // Double-tap / Space: the ability when charged, otherwise hop on a Roomba.
+      if (this.run.abilities.charged) this.useAbility();
+      else this.useRoomba();
+      return true;
+    }
+    if (a === Action.Roomba) {
+      this.useRoomba();
+      return true;
+    }
     return this.run.handleAction(a);
   };
 
@@ -331,15 +447,35 @@ export class Game {
     d.running = running;
     d.hidden = crashing && !this.popped;
     d.dizzy = afterCrash && this.popped;
-    d.flicker = running && run.collision.invulnerable;
+    d.flicker = running && run.collision.invulnerable && !run.mods.invincible;
+    const pu = run.powerUps;
+    d.boxed = pu.isOn('box') && !afterCrash;
+    d.nap = run.napping;
+    d.loaf = run.secrets.loafLeft > 0 && !afterCrash;
+    d.lift = pu.riding && !afterCrash ? 0.22 : 0;
     this.cat.update(dt, d);
+    this.powerFx.update(dt, pu, { x, y: d.y + d.lift, purr: run.abilities.purrLeft > 0 });
+    this.bossView.update(dt, run.boss, dist);
+    this.fieldView.goldBoost = pu.isOn('treats');
+    const canvas = this.renderer.domElement;
+    canvas.classList.toggle('fx-catnip', running && pu.isOn('catnip'));
+    canvas.classList.toggle('fx-nap', running && run.napping);
+    if (running) {
+      this.powerHud.update(pu, run.abilities.charge, frameDt);
+      this.powerHud.setSpeedLines(pu.isOn('zoomies') || pu.isOn('fishRocket') || r.dashLeft > 0 || pu.isOn('catnip'));
+      const boss = run.boss;
+      let banner = '';
+      if (run.secrets.inAlley) banner = UI_TEXT.alleyBanner.replace('{s}', String(Math.ceil(run.secrets.alleyLeft)));
+      else if (boss.phase === BossPhase.Throwing) banner = UI_TEXT.bossBanner.replace('{n}', String(boss.dodges)).replace('{t}', String(BOSS.throwsToWin));
+      this.powerHud.setBanner(banner);
+    }
 
     const mode = !afterCrash ? PackMode.Run : this.popped ? PackMode.Gloat : PackMode.Pounce;
     if (frozen) this.pack.update(0, run.chase, x, r.speed, mode);
     else this.pack.update(frameDt, run.chase, x, running ? r.speed : 0, mode);
     this.fx.update(frozen ? 0 : frameDt, x, d.y);
 
-    this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0);
+    this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0, r.flying && !afterCrash);
     if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
     this.renderer.render(this.scene, this.rig.camera);
   };

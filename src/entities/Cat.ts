@@ -21,6 +21,14 @@ export interface CatDrive {
   dizzy: boolean;
   /** Blink while invulnerable after a revive. */
   flicker: boolean;
+  /** Inside the Cardboard Box: only the feet show. */
+  boxed: boolean;
+  /** Nap Time: curled up. */
+  nap: boolean;
+  /** Mystery Fish gag: loaf mode. */
+  loaf: boolean;
+  /** Visual lift (riding the Roomba). */
+  lift: number;
 }
 
 function damp(cur: number, target: number, rate: number, dt: number): number {
@@ -136,6 +144,18 @@ export class Cat {
     } else {
       r.head.rotation.z = 0;
     }
+    // Nap: curled up, paws tucked. Loaf: paws hidden, body wide and low.
+    if (d.nap || d.loaf) {
+      r.body.scale.set(1.18, 0.62, d.nap ? 0.85 : 1.05);
+      r.body.position.y = r.bodyHeight * 0.55;
+      r.body.rotation.x = 0;
+      r.head.rotation.x = d.nap ? 0.5 : 0;
+      for (let i = 0; i < 4; i++) r.legs[i].rotation.x = i < 2 ? -1.5 : 1.5;
+    }
+    for (let i = 0; i < 4; i++) r.legs[i].visible = !d.loaf;
+    r.torso.visible = r.head.visible = r.tail[0].visible = !d.boxed;
+    r.root.position.y = d.y + d.lift;
+
     const show = !d.hidden && !(d.flicker && Math.floor(this.time * 12) % 2 === 0);
     r.root.visible = show;
     r.shadow.visible = !d.hidden;

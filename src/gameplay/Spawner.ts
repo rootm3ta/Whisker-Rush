@@ -4,6 +4,8 @@ import { LOOT, LOOT_MAPLE_LANE, RARITIES, RARITY_DISTANCE_BONUS, SOCK_ITEM, COIN
 import { OBSTACLES, OBSTACLE_COLORS } from '../data/obstacles';
 import { PATTERNS, type Pattern } from '../data/patterns';
 import { SPAWNER } from '../data/spawner';
+import { POWERUPS, POWERUP_IDS, POWERUP_SPAWN } from '../data/powerups';
+import { BELLS } from '../data/secrets';
 import { PickupKind, type Field } from './Field';
 
 const BY_TIER: Pattern[][] = [1, 2, 3].map((t) => PATTERNS.filter((p) => p.tier === t));
@@ -54,9 +56,21 @@ export function rollLootItem(rng: Rng, distance: number): number {
   return LOOT_MAPLE_LANE.indexOf(item);
 }
 
-/** Streams patterns ahead of the cat into the Field. */
+const POWER_WEIGHTS = POWERUP_IDS.map((id) => POWERUPS[id].weight);
+
+/** Secrets the spawner asks about when placing bells and Daily Hunt letters. */
+export interface SpawnHooks {
+  nextBell(): number;
+  markBellSpawned(id: number): void;
+  nextLetter(s: number): number;
+}
+
+/** Streams patterns ahead of the cat into the Field, plus power-ups and secrets in the gaps. */
 export class Spawner {
-  private nextS = SPAWNER.firstAt;
+  /** While paused (Boss Chase, Secret Alley) no patterns are placed. */
+  paused = false;
+  hooks: SpawnHooks | null = null;
+  private nextS: number = SPAWNER.firstAt;
   private last: Pattern | null = null;
   private readonly rng = new Rng(SPAWNER.seed);
 
@@ -66,15 +80,44 @@ export class Spawner {
     this.rng.reseed(seed);
     this.nextS = SPAWNER.firstAt;
     this.last = null;
+    this.paused = false;
+  }
+
+  /** Resume placing patterns from `s` onward. */
+  resumeAt(s: number): void {
+    this.paused = false;
+    this.nextS = Math.max(this.nextS, s);
   }
 
   update(distance: number, speed: number): void {
+    if (this.paused) {
+      this.nextS = Math.max(this.nextS, distance + SPAWNER.aheadM);
+      return;
+    }
     while (this.nextS < distance + SPAWNER.aheadM) {
       const tier = pickTier(this.nextS, this.rng);
       const p = pickPattern(tier, this.rng, this.last);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
       this.last = p;
-      this.nextS += p.length + Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
+      const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
+      this.placeGapExtras(this.nextS + p.length + gap / 2);
+      this.nextS += p.length + gap;
+    }
+  }
+
+  /** Pattern gaps are clear road: a good place for power-ups, Mystery Fish and Daily Hunt letters. */
+  private placeGapExtras(s: number): void {
+    const rng = this.rng;
+    const x = rng.int(-1, 2) * LANES.width;
+    const y = POWERUP_SPAWN.y;
+    const roll = rng.next();
+    if (roll < POWERUP_SPAWN.perGap) {
+      this.field.addPickup(PickupKind.PowerUp, weightedIndex(POWER_WEIGHTS, rng.next()), x, s, y);
+    } else if (roll < POWERUP_SPAWN.perGap + POWERUP_SPAWN.mysteryFish) {
+      this.field.addPickup(PickupKind.Mystery, 0, x, s, y);
+    } else if (roll < POWERUP_SPAWN.perGap + POWERUP_SPAWN.mysteryFish + POWERUP_SPAWN.letter) {
+      const letter = this.hooks?.nextLetter(s) ?? -1;
+      if (letter >= 0) this.field.addPickup(PickupKind.Letter, letter, x, s, y);
     }
   }
 
@@ -104,6 +147,14 @@ export class Spawner {
           if (rng.next() < LOOT.fishBoneChance) f.addPickup(PickupKind.FishBone, 0, x, s, e.y);
           else f.addPickup(PickupKind.Loot, rollLootItem(rng, s), x, s, e.y);
           break;
+        case 'bell': {
+          const id = this.hooks?.nextBell() ?? -1;
+          if (id >= 0 && rng.next() < BELLS.slotChance) {
+            this.hooks?.markBellSpawned(id);
+            f.addPickup(PickupKind.Bell, id, x, s, e.y);
+          }
+          break;
+        }
         case 'line': {
           f.addObstacle('clothesline', x, s, e.len, 0xffffff);
           const top = OBSTACLES.clothesline.top ?? 0;

@@ -93,7 +93,8 @@ export class CrashFx {
     this.dizzy.visible = on;
   }
 
-  burst(x: number, y: number, z: number): void {
+  burst(x: number, y: number, z: number, color: number = REVIVE_BURST.color): void {
+    this.ringMat.color.setHex(color);
     this.ring.position.set(x, y + 0.3, z);
     this.ring.visible = true;
     this.burstT = 0;

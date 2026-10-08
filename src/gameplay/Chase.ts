@@ -65,6 +65,22 @@ export class Chase {
     this.nextRushAt = Math.max(this.nextRushAt, runTime + PACK_RUSH.everySec / 2);
   }
 
+  /** Cardboard Box / boosts: the pack loses the trail and drops back. */
+  loseTrail(): void {
+    this.closeLeft = 0;
+    this.lunge = 0;
+  }
+
+  /** Hiss: scares the pack back and Bolt off the road. */
+  hiss(): void {
+    this.loseTrail();
+    if (this.rushPhase !== RushPhase.Idle) {
+      this.rushPhase = RushPhase.Idle;
+      this.nextRushAt += PACK_RUSH.everySec;
+      this.bus.emit('packRushEnd', 0);
+    }
+  }
+
   /** Called while the crash/caught animation plays. */
   stepPounce(dt: number): void {
     this.pounce = true;

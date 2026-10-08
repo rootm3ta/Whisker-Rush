@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OBSTACLE_COLORS as K, type ObstacleId } from '../data/obstacles';
+import { CAT_DOOR } from '../data/secrets';
 import { merge, paint } from './geo';
 
 /** Places a primitive and paints it in one call. */
@@ -148,6 +149,26 @@ function hedgeWall(): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/** Hedge wall with a glowing cat flap on both sides. */
+function catDoorWall(): THREE.BufferGeometry {
+  const parts = [hedgeWall()];
+  for (const sx of [-1, 1]) {
+    parts.push(box(0.06, 0.75, 0.7, K.rampDark, sx * 1.21, 0.42, -CAT_DOOR.at));
+    parts.push(box(0.07, 0.6, 0.55, CAT_DOOR.glow, sx * 1.22, 0.4, -CAT_DOOR.at));
+  }
+  return merge(parts);
+}
+
+/** Stack of mail parcels Duke throws from the truck. */
+function parcel(): THREE.BufferGeometry {
+  return merge([
+    box(0.9, 0.55, 0.8, K.parcel, 0, 0.28, -0.45),
+    box(0.92, 0.08, 0.82, K.parcelTape, 0, 0.3, -0.45),
+    box(0.6, 0.4, 0.55, K.parcel, 0.1, 0.75, -0.45),
+    box(0.08, 0.42, 0.57, K.parcelTape, 0.1, 0.75, -0.45),
+  ]);
+}
+
 /** Unit-length clothesline wire along -z; poles are added by the view. */
 function clothesline(): THREE.BufferGeometry {
   return merge([box(0.05, 0.05, 1, K.rope, 0, 1.5, -0.5)]);
@@ -166,6 +187,8 @@ export const OBSTACLE_GEOMETRY: Record<ObstacleId, () => THREE.BufferGeometry> =
   ramp,
   hedgeWall,
   clothesline,
+  catDoorWall,
+  parcel,
 };
 
 export function clotheslinePole(): THREE.BufferGeometry {
@@ -192,6 +215,39 @@ export function fishBoneGeometry(color: number): THREE.BufferGeometry {
   tail.rotateZ(-Math.PI / 2);
   parts.push(part(tail, color, 0.4, 0, 0));
   return merge(parts);
+}
+
+/** Power-up token: a ring around a ball, tinted per power-up. */
+export function tokenGeometry(): THREE.BufferGeometry {
+  const ring = new THREE.TorusGeometry(0.36, 0.06, 6, 18);
+  return merge([paint(ring, 0xffffff), part(new THREE.SphereGeometry(0.22, 12, 8), 0xffffff, 0, 0, 0)]);
+}
+
+export function mysteryFishGeometry(color: number): THREE.BufferGeometry {
+  const body = new THREE.SphereGeometry(0.3, 10, 8);
+  body.scale(1.4, 0.8, 0.4);
+  const tail = new THREE.ConeGeometry(0.2, 0.3, 3);
+  tail.rotateZ(-Math.PI / 2);
+  return merge([paint(body, color), part(tail, color, 0.5, 0, 0), part(new THREE.SphereGeometry(0.05, 6, 4), 0x2a201c, -0.25, 0.06, 0.1)]);
+}
+
+export function bellGeometry(color: number): THREE.BufferGeometry {
+  const cup = new THREE.CylinderGeometry(0.1, 0.3, 0.38, 12, 1, true);
+  return merge([
+    part(cup, color, 0, 0, 0),
+    part(new THREE.SphereGeometry(0.12, 10, 6), color, 0, 0.2, 0),
+    part(new THREE.SphereGeometry(0.07, 8, 6), 0x8a6a4f, 0, -0.22, 0),
+    part(new THREE.TorusGeometry(0.06, 0.02, 4, 10), color, 0, 0.34, 0),
+  ]);
+}
+
+export function chestGeometry(): THREE.BufferGeometry {
+  return merge([
+    box(0.9, 0.5, 0.6, 0x8d5f38, 0, 0, 0),
+    box(0.92, 0.22, 0.62, 0xa56f42, 0, 0.36, 0),
+    box(0.94, 0.08, 0.64, 0xf2c14e, 0, 0.22, 0),
+    box(0.14, 0.18, 0.05, 0xf2c14e, 0, 0.18, -0.32),
+  ]);
 }
 
 export function sockGeometry(): THREE.BufferGeometry {

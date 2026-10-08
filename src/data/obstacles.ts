@@ -11,7 +11,9 @@ export type ObstacleId =
   | 'mailTruck'
   | 'ramp'
   | 'hedgeWall'
-  | 'clothesline';
+  | 'clothesline'
+  | 'catDoorWall'
+  | 'parcel';
 
 export interface ObstacleDef {
   /** Default length along the track (m). Clotheslines can override per pattern. */
@@ -32,6 +34,8 @@ export interface ObstacleDef {
   kickable: boolean;
   /** Max simultaneous instances (render pool). */
   capacity: number;
+  /** Has a glowing cat flap on its side (Secret Alley entrance). */
+  catDoor?: boolean;
 }
 
 const base = { top: null, ramp: false, grind: false, lethal: false, kickable: false } as const;
@@ -49,6 +53,8 @@ export const OBSTACLES: Record<ObstacleId, ObstacleDef> = {
   ramp: { ...base, length: 4, halfWidth: 1.2, body: null, top: 1.4, ramp: true, capacity: 6 },
   hedgeWall: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 8 },
   clothesline: { ...base, length: 20, halfWidth: 1.4, body: null, top: 1.5, grind: true, capacity: 6 },
+  catDoorWall: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 2, catDoor: true },
+  parcel: { ...base, length: 0.9, halfWidth: 0.9, body: [0, 0.95], lethal: true, capacity: 12 },
 };
 
 export const OBSTACLE_IDS = Object.keys(OBSTACLES) as ObstacleId[];
@@ -74,4 +80,6 @@ export const OBSTACLE_COLORS = {
   truckStripe: 0x3f6f8a,
   ramp: 0xb07a4a,
   rampDark: 0x8d5f38,
+  parcel: 0xc8915a,
+  parcelTape: 0xe8d4b8,
 } as const;

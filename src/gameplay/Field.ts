@@ -13,6 +13,10 @@ export class Obstacle {
   hit = false;
   armed = false;
   color = 0;
+  /** Thrown by the boss: seconds left in the air (no collisions while > 0). */
+  flight = 0;
+  thrown = false;
+  counted = false;
 }
 
 export class Coin {
@@ -22,7 +26,7 @@ export class Coin {
   y = 0;
 }
 
-export const PickupKind = { Loot: 0, FishBone: 1, Sock: 2 } as const;
+export const PickupKind = { Loot: 0, FishBone: 1, Sock: 2, PowerUp: 3, Mystery: 4, Bell: 5, Letter: 6, Chest: 7 } as const;
 
 export class Pickup {
   active = false;
@@ -65,9 +69,18 @@ export class Field implements RunnerWorld {
       o.hit = false;
       o.armed = false;
       o.color = color;
+      o.flight = 0;
+      o.thrown = false;
+      o.counted = false;
       return o;
     }
     return null;
+  }
+
+  clearAll(s0: number): void {
+    for (const o of this.obstacles) if (o.active && o.s1 >= s0) o.active = false;
+    for (const c of this.coins) if (c.active && c.s >= s0) c.active = false;
+    for (const p of this.pickups) if (p.active && p.s >= s0) p.active = false;
   }
 
   addCoin(x: number, s: number, y: number): void {
@@ -119,7 +132,7 @@ export class Field implements RunnerWorld {
     let best = 0;
     let grind = false;
     for (const o of this.obstacles) {
-      if (!o.active || o.def.top === null) continue;
+      if (!o.active || o.def.top === null || o.flight > 0) continue;
       if (Math.abs(x - o.x) > o.def.halfWidth || s < o.s0 || s > o.s1) continue;
       if (ignoreGrind && o.def.grind) continue;
       const top = this.surfaceTop(o, s);

@@ -40,6 +40,9 @@ export const CAMERA = {
   lookX: 0.7,
   followY: 0.45,
   lookY: 0.3,
+  /** While flying (Balloon, Fish Rocket) the camera follows height more closely. */
+  flyFollowY: 0.9,
+  flyLookY: 0.85,
   /** Exponential follow rates (1/s). Lower = more lag. */
   xRate: 9,
   yRate: 5,

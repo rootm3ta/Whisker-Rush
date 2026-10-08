@@ -9,7 +9,9 @@ export type PatternEntry =
   | { t: 'arc'; lane: Lane; z: number; n: number; len: number; h: number; y: number }
   | { t: 'loot'; lane: Lane; z: number; y: number }
   /** Clothesline (grind) with socks hanging along it. */
-  | { t: 'line'; lane: Lane; z: number; len: number; socks: number };
+  | { t: 'line'; lane: Lane; z: number; len: number; socks: number }
+  /** Lucky Bell slot (only sometimes filled, see BELLS.slotChance). */
+  | { t: 'bell'; lane: Lane; z: number; y: number };
 
 export interface Pattern {
   name: string;
@@ -30,6 +32,7 @@ const coins = (lane: Lane, z: number, n: number, y = 0.6, gap = 2.4): PatternEnt
 const arc = (lane: Lane, z: number, n: number, len: number, h = 1.5, y = 0.6): PatternEntry => ({ t: 'arc', lane, z, n, len, h, y });
 const loot = (lane: Lane, z: number, y = 0.75): PatternEntry => ({ t: 'loot', lane, z, y });
 const line = (lane: Lane, z: number, len: number, socks = 3): PatternEntry => ({ t: 'line', lane, z, len, socks });
+const bell = (lane: Lane, z: number, y: number): PatternEntry => ({ t: 'bell', lane, z, y });
 
 /** Hand-authored Maple Lane patterns. All are mirrored at random by the spawner. */
 export const PATTERNS: Pattern[] = [
@@ -53,7 +56,7 @@ export const PATTERNS: Pattern[] = [
     tier: 2,
     weight: 1,
     length: 34,
-    entries: [o('ramp', C, 4), o('car', C, 8), o('car', C, 12.2), o('mailTruck', C, 16.4), coins(C, 9, 4, CAR_TOP, 2), arc(C, 15, 3, 3, 1.4, CAR_TOP), coins(C, 18, 3, TRUCK_TOP, 2), o('trashCans', L, 12), o('trashCans', R, 20)],
+    entries: [o('ramp', C, 4), o('car', C, 8), o('car', C, 12.2), o('mailTruck', C, 16.4), coins(C, 9, 4, CAR_TOP, 2), arc(C, 15, 3, 3, 1.4, CAR_TOP), coins(C, 18, 3, TRUCK_TOP, 2), bell(C, 22, TRUCK_TOP), o('trashCans', L, 12), o('trashCans', R, 20)],
   },
   {
     name: 'zigzag',
@@ -69,7 +72,7 @@ export const PATTERNS: Pattern[] = [
     tier: 2,
     weight: 0.9,
     length: 28,
-    entries: [o('hedgeWall', L, 6), o('hedgeWall', R, 6), coins(C, 4, 5), arc(C, 8, 5, 8, 1.0, 2.6), loot(C, 12, 3.2)],
+    entries: [o('hedgeWall', L, 6), o('hedgeWall', R, 6), coins(C, 4, 5), arc(C, 8, 5, 8, 1.0, 2.6), loot(C, 12, 3.2), bell(L, 14, 2.9)],
   },
   { name: 'line-hop', tier: 2, weight: 0.8, length: 42, entries: [line(L, 4, 20, 3), line(C, 20, 20, 3), coins(R, 4, 12), arc(L, 0, 3, 4, 1, 0.8)] },
 
@@ -101,7 +104,7 @@ export const PATTERNS: Pattern[] = [
     tier: 3,
     weight: 1,
     length: 32,
-    entries: [o('ramp', C, 0), o('car', C, 4), o('car', L, 6), o('mailTruck', C, 8.2), o('trashCans', R, 14), o('gardenFence', L, 22), coins(C, 4.5, 2, CAR_TOP, 1.6), coins(C, 10, 3, TRUCK_TOP, 2)],
+    entries: [o('ramp', C, 0), o('car', C, 4), o('car', L, 6), o('mailTruck', C, 8.2), o('trashCans', R, 14), o('gardenFence', L, 22), coins(C, 4.5, 2, CAR_TOP, 1.6), coins(C, 10, 3, TRUCK_TOP, 2), bell(C, 14, TRUCK_TOP)],
   },
   {
     name: 'truck-loot',
@@ -110,5 +113,9 @@ export const PATTERNS: Pattern[] = [
     length: 28,
     entries: [o('car', R, 4), o('mailTruck', R, 8.2), loot(R, 11, TRUCK_TOP + 0.1), o('trashCans', L, 6), o('gardenFence', C, 12), coins(C, 0, 4), coins(L, 14, 4)],
   },
-  { name: 'double-line', tier: 3, weight: 0.8, length: 34, entries: [line(L, 2, 24, 4), line(R, 2, 24, 4), o('hedge', C, 8), o('lowBranch', C, 20), coins(C, 26, 4)] },
+  { name: 'double-line', tier: 3, weight: 0.8, length: 34, entries: [line(L, 2, 24, 4), line(R, 2, 24, 4), o('hedge', C, 8), o('lowBranch', C, 20), coins(C, 26, 4), bell(R, 24, 2.1)] },
+
+  // Rare: a glowing cat flap in a hedge wall. Swipe into it to enter the Secret Alley.
+  { name: 'cat-door', tier: 1, weight: 0.12, length: 20, entries: [o('catDoorWall', L, 4), o('trashCans', R, 10), coins(C, 2, 6)] },
+  { name: 'cat-door-2', tier: 2, weight: 0.12, length: 20, entries: [o('catDoorWall', R, 4), o('hedge', C, 12), arc(C, 8, 5, 8), bell(L, 10, 0.75)] },
 ];

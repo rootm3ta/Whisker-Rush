@@ -40,6 +40,13 @@ export class Runner {
   speed = speedAt(0);
   time = 0;
   zone = 0;
+  /** Speed multiplier from power-ups (set each step by the session). */
+  speedMul = 1;
+  /** When set, the cat floats at this height (Balloon Ride, Fish Rocket). */
+  flyHeight: number | null = null;
+  /** Remaining Pounce dash distance (m) and its speed (m/s). */
+  dashLeft = 0;
+  dashSpeed = 0;
 
   private prevLane = 0;
   private laneFromX = 0;
@@ -78,6 +85,13 @@ export class Runner {
     this.slideOnLand = false;
     this.kicks = 0;
     this.dropThrough = 0;
+    this.speedMul = 1;
+    this.flyHeight = null;
+    this.dashLeft = 0;
+  }
+
+  get flying(): boolean {
+    return this.flyHeight !== null;
   }
 
   /** Buffer handler: returns true when the action was consumed. */
@@ -97,6 +111,7 @@ export class Runner {
         return true;
       }
       case Action.Up:
+        if (this.flyHeight !== null) return true;
         if (this.grounded) {
           this.slideLeft = 0;
           this.setGrinding(false);
@@ -114,6 +129,7 @@ export class Runner {
         }
         return false;
       case Action.Down:
+        if (this.flyHeight !== null) return true;
         if (this.grinding) {
           this.dropThrough = DROP_THROUGH_SEC;
           this.leaveGround();
@@ -144,6 +160,13 @@ export class Runner {
     this.laneT = 1;
     this.kicks = 0;
     this.prevDistance = this.distance;
+  }
+
+  /** Glide to a lane (auto-dodge). */
+  setLane(lane: number): void {
+    if (lane === this.lane) return;
+    this.prevLane = this.lane;
+    this.moveToLane(lane);
   }
 
   /** Side bump: return to the lane we came from. */
@@ -203,8 +226,13 @@ export class Runner {
     this.prevDistance = this.distance;
 
     this.time += dt;
-    this.speed = speedAt(this.time);
+    this.speed = speedAt(this.time) * this.speedMul;
     this.distance += this.speed * dt;
+    if (this.dashLeft > 0) {
+      const d = Math.min(this.dashLeft, this.dashSpeed * dt);
+      this.distance += d;
+      this.dashLeft -= d;
+    }
     if (this.dropThrough > 0) this.dropThrough -= dt;
     if (this.grinding) this.grindTime += dt;
 
@@ -216,7 +244,14 @@ export class Runner {
 
     const w = this.world;
     const ignoreGrind = this.dropThrough > 0;
-    if (this.grounded) {
+    if (this.flyHeight !== null) {
+      if (this.grounded) this.leaveGround();
+      this.slideLeft = 0;
+      const k = 1 - Math.exp(-4 * dt);
+      const ny = this.y + (this.flyHeight - this.y) * k;
+      this.vy = (ny - this.y) / dt;
+      this.y = ny;
+    } else if (this.grounded) {
       const sup = w ? w.supportAt(this.x, this.distance, this.y, HITBOX.stepUp, ignoreGrind) : 0;
       if (sup < this.y - 0.02) {
         this.leaveGround();
@@ -227,7 +262,7 @@ export class Runner {
       }
     }
 
-    if (!this.grounded) {
+    if (!this.grounded && this.flyHeight === null) {
       const yPrev = this.y;
       // Exact ballistic step so jump height matches data at any dt.
       this.y += this.vy * dt - 0.5 * GRAVITY * dt * dt;
