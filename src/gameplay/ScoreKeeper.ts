@@ -1,10 +1,11 @@
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../core/events';
 import { LOOT_MAPLE_LANE, RARITIES } from '../data/pickups';
+import { PACK_RUSH } from '../data/chase';
 import { COMBO, POINTS, STUNTS, STUNT_RULES } from '../data/scoring';
 import type { Score } from './Score';
 
-const STUNT = { tripleKick: 0, longGrind: 1, dodgeChain: 2 } as const;
+const STUNT = { tripleKick: 0, longGrind: 1, dodgeChain: 2, packEscape: 3 } as const;
 
 /** Turns gameplay events into points, combo and stunts. Pure logic, driven by the event bus. */
 export class ScoreKeeper {
@@ -34,6 +35,11 @@ export class ScoreKeeper {
     bus.on('grindEnd', (sec) => {
       this.grinding = false;
       if (sec >= STUNT_RULES.longGrindSec) this.stunt(STUNT.longGrind);
+    });
+    bus.on('packRushEnd', (survived) => {
+      if (!survived) return;
+      score.coins += PACK_RUSH.bonusCoins;
+      this.stunt(STUNT.packEscape);
     });
     bus.on('stumble', () => {
       score.breakCombo();

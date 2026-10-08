@@ -17,6 +17,10 @@ export interface CatDrive {
   sliding: boolean;
   grinding: boolean;
   running: boolean;
+  hidden: boolean;
+  dizzy: boolean;
+  /** Blink while invulnerable after a revive. */
+  flicker: boolean;
 }
 
 function damp(cur: number, target: number, rate: number, dt: number): number {
@@ -123,6 +127,23 @@ export class Cat {
     r.shadow.scale.set(s, 1, 1.6 * s);
 
     this.blinkAndEars(frameDt);
+
+    // Dizzy after a crash: woozy sway and squinted eyes.
+    if (d.dizzy) {
+      r.root.rotation.y += Math.sin(this.time * 2.3) * 0.3;
+      r.head.rotation.z = Math.sin(this.time * 4.6) * 0.3;
+      r.eyes[0].scale.y = r.eyes[1].scale.y = 0.25;
+    } else {
+      r.head.rotation.z = 0;
+    }
+    const show = !d.hidden && !(d.flicker && Math.floor(this.time * 12) % 2 === 0);
+    r.root.visible = show;
+    r.shadow.visible = !d.hidden;
+  }
+
+  /** Squash-pop when Miso bursts out of the dust cloud or revives. */
+  pop(): void {
+    this.squashV += A.jumpStretch * 1.6;
   }
 
   private stepTail(h: number, d: CatDrive): void {

@@ -24,6 +24,23 @@ export class Collision {
     this.crashed = false;
   }
 
+  get invulnerable(): boolean {
+    return this.grace > 0;
+  }
+
+  /** Stumble caused by something outside the field (Bolt during Pack Rush). */
+  externalStumble(r: Runner): void {
+    if (this.grace > 0 || this.crashed) return;
+    this.stumble(r);
+  }
+
+  /** Clears the crash and grants invulnerability. */
+  revive(invulnSec: number): void {
+    this.crashed = false;
+    this.grace = invulnSec;
+    this.lastStumble = -Infinity;
+  }
+
   /** The obstacle about to hit the cat within the Cat Reflex window, at the current pose. */
   findThreat(r: Runner): Obstacle | null {
     const reach = r.speed * REFLEX.windowSec;

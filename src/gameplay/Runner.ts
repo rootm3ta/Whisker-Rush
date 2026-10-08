@@ -132,6 +132,20 @@ export class Runner {
     }
   };
 
+  /** Back on the road after a revive: grounded, centered in the current lane. */
+  revive(): void {
+    this.setGrinding(false);
+    this.x = this.prevX = this.lane * LANES.width;
+    this.y = this.prevY = 0;
+    this.vy = 0;
+    this.grounded = true;
+    this.slideLeft = 0;
+    this.slideOnLand = false;
+    this.laneT = 1;
+    this.kicks = 0;
+    this.prevDistance = this.distance;
+  }
+
   /** Side bump: return to the lane we came from. */
   bounceBack(): void {
     const back = this.prevLane;

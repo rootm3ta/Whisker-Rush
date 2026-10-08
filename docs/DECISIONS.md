@@ -34,3 +34,14 @@ One line per judgment call.
 - M2: Combo applies to everything scored (distance, pickups, stunts); permanent multiplier is 1 until Mission Sets exist (M5).
 - M2: Temporary end-of-run "Bonk!" card with score summary; real game over screen and dogs arrive in M3.
 - M2: Obstacles/coins/pickups use one InstancedMesh per kind with per-frame matrix updates (frustum culling off; only ~100 small instances live).
+- M3: The pack lives at a "gap" behind the cat: off screen at 13 m, on screen at 1.9 m for 6 s after a stumble (same window as "second stumble = caught").
+- M3: Pack Rush uses Bolt (Maple Lane's local dog): he overtakes in a neighbor lane during the 1.6 s warning, then repeatedly cuts into the cat's current lane 14 m ahead and drops back through it. Dodge by changing lane or jumping (he is 0.6 m tall). Getting hit is a stumble; surviving pays 50 coins plus a PACK ESCAPE stunt.
+- M3: Both crash and caught play the same comic dust-cloud fight (1.5 s), then Miso pops out dizzy with orbiting stars while the dogs turn to gloat (1.1 s), then Game Over.
+- M3: Duke's sunglasses only show when the pack turns to gloat, since the chase camera sees the dogs from behind; the spiked collar reads from behind.
+- M3: Revive clears obstacles from 2 m behind to 30 m ahead, 3 s invulnerability (cat flickers), green burst ring; the "Catnip burst" power-up proper lands in M4.
+- M3: Minimal versioned Save (`wr.save.v1`) behind `IStorage` now, for best score and Fish Bones; full meta save in M5. New players start with 2 Fish Bones so paid revives are reachable before the economy exists.
+- M3: Coins and Fish Bones are banked when Game Over shows (so Fish Bones found this run can pay a revive); best score and run count are recorded on Continue, so revived runs count once.
+- M3: Loot gained is shown on Game Over but not yet persisted; the Satchel feeds Old Tom's Market in M5.
+- M3: Share is a placeholder: Web Share API when present, else copy text to clipboard.
+- M3: Boss Chase (every 3000 m) is not in this milestone's scope; left for a later pass.
+- M3: `?debug` exposes the Game instance as `window.__wr` for headless checks.

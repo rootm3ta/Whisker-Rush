@@ -20,6 +20,9 @@ export class Hud {
   private readonly stampEl: HTMLElement;
   private shown = { score: -1, coins: -1, satchel: -1, cap: -1, combo: -1 };
   private stampTimer = 0;
+  private tauntTimer = 0;
+  private readonly rushEl: HTMLElement;
+  private readonly tauntEl: HTMLElement;
 
   constructor(host: HTMLElement) {
     const root = document.createElement('div');
@@ -30,7 +33,9 @@ export class Hud {
       <div class="wr-tag wr-coins">${COIN_SVG}<span class="wr-coins-v">0</span></div>
       <div class="wr-tag wr-satchel">${BAG_SVG}<span class="wr-satchel-v">0/12</span></div>
       <div class="wr-combo">${PAW_SVG}<div class="wr-combo-bar"><div class="wr-combo-fill"></div></div><span class="wr-combo-v">x1.0</span></div>
-      <div class="wr-stamp"></div>`;
+      <div class="wr-stamp"></div>
+      <div class="wr-rush"></div>
+      <div class="wr-taunt"></div>`;
     host.appendChild(root);
     this.root = root;
     this.scoreEl = root.querySelector('.wr-score-v')!;
@@ -40,6 +45,19 @@ export class Hud {
     this.comboFill = root.querySelector('.wr-combo-fill')!;
     this.comboWrap = root.querySelector('.wr-combo')!;
     this.stampEl = root.querySelector('.wr-stamp')!;
+    this.rushEl = root.querySelector('.wr-rush')!;
+    this.tauntEl = root.querySelector('.wr-taunt')!;
+  }
+
+  /** Red edge glow during Pack Rush. */
+  setRush(on: boolean): void {
+    this.rushEl.classList.toggle('wr-rush-on', on);
+  }
+
+  taunt(text: string): void {
+    this.tauntEl.textContent = text;
+    this.tauntEl.classList.add('wr-taunt-on');
+    this.tauntTimer = H.tauntMs;
   }
 
   set visible(v: boolean) {
@@ -70,6 +88,10 @@ export class Hud {
       this.comboFill.style.transform = `scaleX(${score.comboFill})`;
       this.comboWrap.classList.toggle('wr-max', score.combo >= COMBO.max - 1e-3);
     }
+    if (this.tauntTimer > 0) {
+      this.tauntTimer -= dtMs;
+      if (this.tauntTimer <= 0) this.tauntEl.classList.remove('wr-taunt-on');
+    }
     if (this.stampTimer > 0) {
       this.stampTimer -= dtMs;
       if (this.stampTimer <= 0) this.stampEl.classList.remove('wr-stamp-on');
@@ -90,6 +112,9 @@ export class Hud {
   reset(): void {
     this.shown = { score: -1, coins: -1, satchel: -1, cap: -1, combo: -1 };
     this.stampTimer = 0;
+    this.tauntTimer = 0;
     this.stampEl.classList.remove('wr-stamp-on');
+    this.tauntEl.classList.remove('wr-taunt-on');
+    this.setRush(false);
   }
 }

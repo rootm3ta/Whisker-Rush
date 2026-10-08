@@ -29,4 +29,12 @@ export interface GameEvents {
   crash: number;
   /** Payload: index into STUNTS. */
   stunt: number;
+  dukeTaunt: number;
+  packRushWarn: number;
+  packRushStart: number;
+  /** Payload: 1 survived, 0 Bolt got you. */
+  packRushEnd: number;
+  /** Payload: total revives this run. */
+  revive: number;
+  gameOver: number;
 }

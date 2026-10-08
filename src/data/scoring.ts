@@ -26,6 +26,7 @@ export const STUNTS = [
   { id: 'tripleKick', label: 'TRIPLE KICK', points: 500 },
   { id: 'longGrind', label: 'LONG GRIND', points: 300 },
   { id: 'dodgeChain', label: 'DODGE CHAIN', points: 400 },
+  { id: 'packEscape', label: 'PACK ESCAPE', points: 500 },
 ] as const;
 
 export const STUNT_RULES = {

@@ -103,6 +103,11 @@ export class Field implements RunnerWorld {
     for (const p of this.pickups) if (p.active && p.s < cut) p.active = false;
   }
 
+  /** Removes obstacles overlapping [s0, s1] (revive clears the way). */
+  clearObstacles(s0: number, s1: number): void {
+    for (const o of this.obstacles) if (o.active && o.s1 >= s0 && o.s0 <= s1) o.active = false;
+  }
+
   surfaceTop(o: Obstacle, s: number): number {
     const top = o.def.top ?? 0;
     if (!o.def.ramp) return top;

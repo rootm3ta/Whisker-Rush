@@ -1,13 +1,21 @@
 import * as THREE from 'three';
 import { CITIES } from '../data/cities';
+import { CRASH } from '../data/chase';
 import { CAMERA } from '../data/runner';
 import { RENDER, SIM } from '../data/render';
 import { REFLEX, STUNTS } from '../data/scoring';
-import { STAMP_COLORS, UI_TEXT } from '../data/ui';
+import { DUKE_TAUNTS, STAMP_COLORS, UI_TEXT } from '../data/ui';
 import { Cat, type CatDrive } from '../entities/Cat';
+import { DogPack, PackMode } from '../entities/DogPack';
 import { RunSession } from '../gameplay/RunSession';
+import { Save } from '../meta/Save';
+import type { IAds } from '../platform/Ads';
+import { MockAds } from '../platform/MockAds';
+import { LocalStorageAdapter } from '../platform/Storage';
 import { CameraRig } from '../render/CameraRig';
+import { CrashFx } from '../render/CrashFx';
 import { FieldView } from '../render/FieldView';
+import { GameOver } from '../ui/GameOver';
 import { Hud } from '../ui/Hud';
 import { Overlay } from '../ui/Overlay';
 import { applyEnvironment } from '../world/Environment';
@@ -16,31 +24,41 @@ import { EventBus } from './EventBus';
 import type { GameEvents } from './events';
 import { Action, Input } from './Input';
 import { FixedLoop } from './Loop';
+import { Rng } from './Rng';
 import { StateMachine } from './StateMachine';
 
-export type AppState = 'boot' | 'home' | 'run' | 'paused' | 'crashed';
+export type AppState = 'boot' | 'home' | 'run' | 'paused' | 'crashing' | 'gameOver' | 'reviving';
 
-/** Wires simulation, rendering, input and app flow together. */
+/** Wires simulation, rendering, input, platform services and app flow together. */
 export class Game {
   readonly bus = new EventBus<GameEvents>();
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly rig = new CameraRig();
   private readonly run = new RunSession(this.bus);
+  private readonly save = new Save(new LocalStorageAdapter());
+  private readonly ads: IAds;
   private readonly track: Track;
   private readonly fieldView = new FieldView();
   private readonly cat: Cat;
+  private readonly pack = new DogPack();
+  private readonly fx = new CrashFx();
   private readonly input: Input;
   private readonly overlay: Overlay;
   private readonly hud: Hud;
+  private readonly gameOver: GameOver;
   private readonly fsm: StateMachine<AppState>;
   private readonly loop: FixedLoop;
-  private readonly drive: CatDrive = { x: 0, y: 0, vy: 0, speed: 0, grounded: true, sliding: false, grinding: false, running: false };
+  private readonly rng = new Rng(Date.now() >>> 0);
+  private readonly drive: CatDrive = {
+    x: 0, y: 0, vy: 0, speed: 0, grounded: true, sliding: false, grinding: false,
+    running: false, hidden: false, dizzy: false, flicker: false,
+  };
   private simTime = 0;
   private timeScale = 1;
   private slowLeft = 0;
-  private crashWasCaught = false;
-  private crashDelay = 0;
+  private crashT = 0;
+  private popped = false;
 
   constructor(private readonly host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -51,16 +69,20 @@ export class Game {
     const palette = CITIES.mapleLane.palette;
     applyEnvironment(this.scene, palette);
     this.track = new Track(palette);
-    this.scene.add(this.track.root, this.fieldView.root);
     this.cat = new Cat(this.bus);
-    this.scene.add(this.cat.rig.root, this.cat.rig.shadow);
+    this.scene.add(this.track.root, this.fieldView.root, this.cat.rig.root, this.cat.rig.shadow, this.pack.root, this.fx.root);
 
+    this.ads = new MockAds(host);
     this.overlay = new Overlay(host);
     this.hud = new Hud(host);
+    this.gameOver = new GameOver(host, {
+      revive: () => this.tryRevive(),
+      share: () => this.share(),
+      continue: () => this.finishRun(),
+    });
     this.input = new Input(host, () => this.simTime);
     this.input.onTap = () => {
       if (this.fsm.is('home') || this.fsm.is('paused')) this.fsm.go('run');
-      else if (this.fsm.is('crashed') && this.crashDelay <= 0) this.fsm.go('home');
     };
     this.wireEvents();
 
@@ -74,6 +96,7 @@ export class Game {
             this.input.buffer.clear();
             this.hud.reset();
             this.hud.visible = false;
+            this.gameOver.hide();
             this.overlay.showHome();
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
@@ -81,32 +104,57 @@ export class Game {
         run: {
           enter: () => {
             this.overlay.hide();
+            this.gameOver.hide();
             this.hud.visible = true;
           },
           update: (dt) => {
             this.input.buffer.process(this.simTime, this.handleRunAction);
             this.run.step(dt);
             this.track.step(this.run.runner.distance);
-            if (this.run.crashed) this.fsm.go('crashed');
+            if (this.run.crashed) this.fsm.go('crashing');
           },
         },
         paused: {
           enter: () => this.overlay.showPaused(),
           update: () => this.input.buffer.process(this.simTime, this.resumeFromPause),
         },
-        crashed: {
+        crashing: {
           enter: () => {
-            const s = this.run.score;
-            this.crashDelay = 0.6;
+            this.crashT = 0;
+            this.popped = false;
             this.timeScale = 1;
             this.slowLeft = 0;
-            this.overlay.showCrash(this.crashWasCaught, s.points, s.coins, this.run.satchel.count, this.run.runner.distance);
+            this.hud.setRush(false);
+            const r = this.run.runner;
+            this.fx.startCloud(r.x, r.y, 0);
           },
           update: (dt) => {
-            this.crashDelay -= dt;
-            this.input.buffer.process(this.simTime, this.restartFromCrash);
+            this.crashT += dt;
+            this.input.buffer.clear();
+            if (this.crashT < CRASH.cloudSec) {
+              this.run.chase.stepPounce(dt);
+            } else {
+              this.run.chase.stepGloat(dt);
+            }
+            if (this.crashT < CRASH.cloudSec) {
+              /* still fighting in the cloud */
+            } else if (!this.popped) {
+              this.popped = true;
+              this.fx.stopCloud();
+              this.fx.setDizzy(true);
+              this.cat.pop();
+              this.pack.taunt();
+              this.hud.taunt(this.rng.pick(DUKE_TAUNTS));
+            } else if (this.crashT >= CRASH.cloudSec + CRASH.dizzySec) {
+              this.fsm.go('gameOver');
+            }
           },
         },
+        gameOver: {
+          enter: () => this.showGameOver(),
+          update: (dt) => this.run.chase.stepGloat(dt),
+        },
+        reviving: {},
       },
       (next) => this.bus.emit('stateChange', next),
     );
@@ -144,10 +192,88 @@ export class Game {
     b.on('satchelFull', () => this.hud.stamp(UI_TEXT.satchelFull, STAMP_COLORS.warn));
     b.on('fishBone', () => this.hud.stamp(UI_TEXT.fishBone, STAMP_COLORS.loot));
     b.on('wallKick', () => this.rig.addKick(CAMERA.landKick * 0.6));
-    b.on('crash', (caught) => {
-      this.crashWasCaught = caught === 1;
-      this.rig.addShake(0.3);
+    b.on('crash', () => this.rig.addShake(0.3));
+    b.on('dukeTaunt', () => {
+      this.pack.taunt();
+      this.hud.taunt(this.rng.pick(DUKE_TAUNTS));
     });
+    b.on('packRushWarn', () => {
+      this.hud.setRush(true);
+      this.hud.stamp(UI_TEXT.packRush, STAMP_COLORS.nearMiss);
+    });
+    b.on('packRushEnd', () => this.hud.setRush(false));
+  }
+
+  private showGameOver(): void {
+    const run = this.run;
+    const banked = run.takeUnbanked();
+    this.save.addCurrency(banked.coins, banked.fishBones);
+    const p = this.save.profile;
+    const score = run.score.points;
+    const loot: number[] = [];
+    for (let i = 0; i < run.satchel.count; i++) loot.push(run.satchel.at(i));
+    this.gameOver.show({
+      caught: run.caught,
+      score,
+      distance: run.runner.distance,
+      best: Math.max(p.bestScore, score),
+      newBest: score > p.bestScore,
+      coins: run.score.coins,
+      loot,
+      revives: run.revives.total,
+      revive: run.nextRevive(),
+      fishBones: p.fishBones,
+    });
+    this.bus.emit('gameOver', 0);
+  }
+
+  private tryRevive(): void {
+    if (!this.fsm.is('gameOver')) return;
+    const opt = this.run.nextRevive();
+    if (opt.kind === 'ad') {
+      this.gameOver.hide();
+      this.fsm.go('reviving');
+      void this.ads.showRewarded('Revive').then((ok) => {
+        if (ok) this.doRevive('ad');
+        else this.fsm.go('gameOver');
+      });
+    } else if (this.save.spendFishBones(opt.cost)) {
+      this.doRevive('fishBones');
+    }
+  }
+
+  private doRevive(kind: 'ad' | 'fishBones'): void {
+    this.run.revive(kind);
+    this.fx.setDizzy(false);
+    const r = this.run.runner;
+    this.fx.burst(r.x, r.y, 0);
+    this.cat.pop();
+    this.hud.stamp(UI_TEXT.revived, STAMP_COLORS.stunt);
+    this.fsm.go('run');
+  }
+
+  private share(): void {
+    const text = UI_TEXT.gameOver.shareText.replace('{m}', String(Math.floor(this.run.runner.distance)));
+    const nav = navigator as Navigator & { share?: (d: { title: string; text: string }) => Promise<void> };
+    if (nav.share) {
+      nav.share({ title: UI_TEXT.title, text }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(
+        () => this.gameOver.toast(UI_TEXT.gameOver.shareCopied),
+        () => this.gameOver.toast(UI_TEXT.gameOver.shareSoon),
+      );
+    } else {
+      this.gameOver.toast(UI_TEXT.gameOver.shareSoon);
+    }
+  }
+
+  private finishRun(): void {
+    if (!this.fsm.is('gameOver')) return;
+    const run = this.run;
+    this.save.profile.revives += run.revives.total;
+    this.save.recordRun(run.score.points, run.runner.distance);
+    this.fx.setDizzy(false);
+    this.fsm.go('home');
   }
 
   private readonly startFromHome = (a: number): boolean => {
@@ -157,11 +283,6 @@ export class Game {
 
   private readonly resumeFromPause = (a: number): boolean => {
     if (a === Action.Pause) this.fsm.go('run');
-    return true;
-  };
-
-  private readonly restartFromCrash = (a: number): boolean => {
-    if (this.crashDelay <= 0 && a !== Action.Pause) this.fsm.go('home');
     return true;
   };
 
@@ -185,28 +306,41 @@ export class Game {
   };
 
   private readonly render = (alpha: number, frameDt: number): void => {
-    const r = this.run.runner;
-    const running = this.fsm.is('run');
-    const frozen = this.fsm.is('paused') || this.fsm.is('crashed');
+    const run = this.run;
+    const r = run.runner;
+    const fsm = this.fsm;
+    const running = fsm.is('run');
+    const crashing = fsm.is('crashing');
+    const afterCrash = crashing || fsm.is('gameOver') || fsm.is('reviving');
+    const frozen = fsm.is('paused');
     const x = r.prevX + (r.x - r.prevX) * alpha;
     const y = r.prevY + (r.y - r.prevY) * alpha;
     const dist = r.prevDistance + (r.distance - r.prevDistance) * alpha;
     const dt = frozen ? 0 : frameDt * this.timeScale;
 
     this.track.render(dist);
-    this.fieldView.update(this.run.field, dist, dt);
+    this.fieldView.update(run.field, dist, afterCrash ? 0 : dt);
     const d = this.drive;
     d.x = x;
-    d.y = y;
+    d.y = afterCrash && this.popped ? 0 : y;
     d.vy = r.vy;
     d.speed = r.speed;
-    d.grounded = r.grounded;
-    d.sliding = r.sliding;
-    d.grinding = r.grinding;
+    d.grounded = r.grounded || afterCrash;
+    d.sliding = r.sliding && !afterCrash;
+    d.grinding = r.grinding && !afterCrash;
     d.running = running;
+    d.hidden = crashing && !this.popped;
+    d.dizzy = afterCrash && this.popped;
+    d.flicker = running && run.collision.invulnerable;
     this.cat.update(dt, d);
-    this.rig.update(this.fsm.is('crashed') ? frameDt : dt, x, y, running ? r.speed : 0);
-    if (running) this.hud.update(this.run.score, this.run.satchel, frameDt * 1000);
+
+    const mode = !afterCrash ? PackMode.Run : this.popped ? PackMode.Gloat : PackMode.Pounce;
+    if (frozen) this.pack.update(0, run.chase, x, r.speed, mode);
+    else this.pack.update(frameDt, run.chase, x, running ? r.speed : 0, mode);
+    this.fx.update(frozen ? 0 : frameDt, x, d.y);
+
+    this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0);
+    if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
     this.renderer.render(this.scene, this.rig.camera);
   };
 

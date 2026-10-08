@@ -35,11 +35,6 @@ export class Overlay {
     this.setCard(UI_TEXT.pausedTitle, '', UI_TEXT.pausedHint, true);
   }
 
-  showCrash(caught: boolean, score: number, coins: number, loot: number, meters: number): void {
-    const body = `Score ${Math.floor(score)} · ${Math.floor(meters)} m · ${coins} coins · ${loot} loot`;
-    this.setCard(caught ? UI_TEXT.caughtTitle : UI_TEXT.crashTitle, body, UI_TEXT.crashHint, false);
-  }
-
   hide(): void {
     this.card.hidden = true;
   }
