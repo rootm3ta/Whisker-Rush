@@ -10,3 +10,14 @@ One line per judgment call.
 - M0: PWA icon is a single hand-authored SVG; PNG icons for iOS can be generated later.
 - M0: Deploy workflow runs `npm test` before build; Pages source must be set to "GitHub Actions" in repo settings.
 - M0: postprocessing, tone and gsap are installed but unused until later milestones (tree-shaken out for now).
+- M1: Speed ramp is 0.03 m/s per second (not the doc's 0.15 per 10 s) so the "26 m/s at ~8 min" soft cap actually holds; ramp quarters above the soft cap, hard cap 30.
+- M1: The cat stays at z = 0 and the world scrolls; chunk z is computed in doubles each frame, avoiding float drift on long runs.
+- M1: Each pooled chunk owns its own InstancedMeshes (houses, roofs, facades, fences, trunks, crowns, lamps) and is re-laid-out on recycle, seeded by chunk index (reproducible streets). About 9 draw calls per chunk, 6 chunks.
+- M1: Street ground (road, stripes, curbs, sidewalks, lawns) is one merged vertex-colored geometry per chunk.
+- M1: Jump uses an exact ballistic step so jump height matches data independent of step size.
+- M1: Only "jump while airborne" is held in the 150 ms buffer; lane changes, slides and fast-drops apply immediately.
+- M1: Swipes fire as soon as the threshold is crossed (not on release) for responsiveness.
+- M1: Zone changes every 1000 m emit `zoneChange` (camera kick only); district visuals deferred to the juice/city milestones.
+- M1: Wall-kick and high layer deferred to M4 (hidden routes), as planned.
+- M1: Minimal Home/Pause card and distance HUD as placeholders; full sketchbook UI comes in M5/M7.
+- M1: Calico coat is a seeded canvas texture on torso/head; tail is plain orange with a black tip for readability from the chase camera.

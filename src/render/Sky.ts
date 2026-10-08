@@ -9,7 +9,7 @@ export function createSkyTexture(p: CityPalette): THREE.CanvasTexture {
   const g = c.getContext('2d')!;
   const grad = g.createLinearGradient(0, 0, 0, c.height);
   grad.addColorStop(0, hex(p.skyTop));
-  grad.addColorStop(0.62, hex(p.skyHorizon));
+  grad.addColorStop(0.55, hex(p.skyHorizon));
   grad.addColorStop(1, hex(p.fog));
   g.fillStyle = grad;
   g.fillRect(0, 0, c.width, c.height);
@@ -18,6 +18,6 @@ export function createSkyTexture(p: CityPalette): THREE.CanvasTexture {
   return tex;
 }
 
-function hex(n: number): string {
+export function hex(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
 }
