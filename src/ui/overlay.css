@@ -1,0 +1,53 @@
+.wr-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Nunito', system-ui, sans-serif;
+  color: #2a201c;
+}
+.wr-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 14%);
+  transform: translateX(-50%) rotate(-1.2deg);
+  width: min(78vw, 340px);
+  text-align: center;
+  background: #fbf6ec;
+  border: 3px solid #2a201c;
+  border-radius: 22px 18px 24px 16px;
+  box-shadow: 5px 5px 0 #2a201c;
+  padding: 14px 16px 12px;
+}
+.wr-card h1 {
+  margin: 0;
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 38px;
+  letter-spacing: 0.5px;
+  color: #e8863a;
+  -webkit-text-stroke: 1.5px #2a201c;
+}
+.wr-body {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.wr-hint {
+  margin: 6px 0 2px;
+  font-size: 18px;
+  font-weight: 800;
+  animation: wr-pulse 1.4s ease-in-out infinite;
+}
+.wr-keys {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.6;
+}
+[hidden] {
+  display: none !important;
+}
+@keyframes wr-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}

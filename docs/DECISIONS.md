@@ -10,3 +10,104 @@ One line per judgment call.
 - M0: PWA icon is a single hand-authored SVG; PNG icons for iOS can be generated later.
 - M0: Deploy workflow runs `npm test` before build; Pages source must be set to "GitHub Actions" in repo settings.
 - M0: postprocessing, tone and gsap are installed but unused until later milestones (tree-shaken out for now).
+- M1: Speed ramp is 0.03 m/s per second (not the doc's 0.15 per 10 s) so the "26 m/s at ~8 min" soft cap actually holds; ramp quarters above the soft cap, hard cap 30.
+- M1: The cat stays at z = 0 and the world scrolls; chunk z is computed in doubles each frame, avoiding float drift on long runs.
+- M1: Each pooled chunk owns its own InstancedMeshes (houses, roofs, facades, fences, trunks, crowns, lamps) and is re-laid-out on recycle, seeded by chunk index (reproducible streets). About 9 draw calls per chunk, 6 chunks.
+- M1: Street ground (road, stripes, curbs, sidewalks, lawns) is one merged vertex-colored geometry per chunk.
+- M1: Jump uses an exact ballistic step so jump height matches data independent of step size.
+- M1: Only "jump while airborne" is held in the 150 ms buffer; lane changes, slides and fast-drops apply immediately.
+- M1: Swipes fire as soon as the threshold is crossed (not on release) for responsiveness.
+- M1: Zone changes every 1000 m emit `zoneChange` (camera kick only); district visuals deferred to the juice/city milestones.
+- M1: Wall-kick and high layer deferred to M4 (hidden routes), as planned.
+- M1: Minimal Home/Pause card and distance HUD as placeholders; full sketchbook UI comes in M5/M7.
+- M1: Calico coat is a seeded canvas texture on torso/head; tail is plain orange with a black tip for readability from the chase camera.
+- M2: 24 hand-authored patterns in 3 tiers; tier weights by distance live in `data/spawner.ts`; patterns are mirrored at random and never repeat back to back.
+- M2: Gap between patterns scales with speed (0.85 s of travel, min 10 m) so reaction time stays fair as speed ramps.
+- M2: One unified surface model: obstacles may have a blocking body, a walkable top, a ramp top, or a grind top (clotheslines). Car roofs, truck roofs, hedge walls and lines are all "high layer".
+- M2: Forgiving collisions: cat hitbox narrower than lanes, 0.35 m step-up onto ledges, and catching a ledge from slightly below snaps you on top instead of crashing.
+- M2: Side bumps (lane change into an obstacle) are stumbles with a bounce back; head-on lethal = crash; non-lethal = stumble. A second stumble within 6 s = caught (M3 adds the dogs).
+- M2: Cat Reflex arms when a swipe applies while an obstacle is within 0.25 s, measured at the pre-swipe pose; slow-mo (x0.4 for 0.3 s real time) fires when that obstacle is cleared, so the stamp lands as you pass it.
+- M2: Wall-kick works off kickable obstacles (cars, mail trucks, hedge walls) in an adjacent lane, up to 3 per airtime, +1.3 m each.
+- M2: Swipe down while grinding drops through the line; lane swipes hop between parallel lines.
+- M2: Socks on clotheslines are the "Sock" common loot item, so they use Satchel slots.
+- M2: Loot rarity weights drift toward rarer items with distance (`RARITY_DISTANCE_BONUS`); 3% of loot slots become Fish Bones.
+- M2: Combo applies to everything scored (distance, pickups, stunts); permanent multiplier is 1 until Mission Sets exist (M5).
+- M2: Temporary end-of-run "Bonk!" card with score summary; real game over screen and dogs arrive in M3.
+- M2: Obstacles/coins/pickups use one InstancedMesh per kind with per-frame matrix updates (frustum culling off; only ~100 small instances live).
+- M3: The pack lives at a "gap" behind the cat: off screen at 13 m, on screen at 1.9 m for 6 s after a stumble (same window as "second stumble = caught").
+- M3: Pack Rush uses Bolt (Maple Lane's local dog): he overtakes in a neighbor lane during the 1.6 s warning, then repeatedly cuts into the cat's current lane 14 m ahead and drops back through it. Dodge by changing lane or jumping (he is 0.6 m tall). Getting hit is a stumble; surviving pays 50 coins plus a PACK ESCAPE stunt.
+- M3: Both crash and caught play the same comic dust-cloud fight (1.5 s), then Miso pops out dizzy with orbiting stars while the dogs turn to gloat (1.1 s), then Game Over.
+- M3: Duke's sunglasses only show when the pack turns to gloat, since the chase camera sees the dogs from behind; the spiked collar reads from behind.
+- M3: Revive clears obstacles from 2 m behind to 30 m ahead, 3 s invulnerability (cat flickers), green burst ring; the "Catnip burst" power-up proper lands in M4.
+- M3: Minimal versioned Save (`wr.save.v1`) behind `IStorage` now, for best score and Fish Bones; full meta save in M5. New players start with 2 Fish Bones so paid revives are reachable before the economy exists.
+- M3: Coins and Fish Bones are banked when Game Over shows (so Fish Bones found this run can pay a revive); best score and run count are recorded on Continue, so revived runs count once.
+- M3: Loot gained is shown on Game Over but not yet persisted; the Satchel feeds Old Tom's Market in M5.
+- M3: Share is a placeholder: Web Share API when present, else copy text to clipboard.
+- M3: Boss Chase (every 3000 m) is not in this milestone's scope; left for a later pass.
+- M3: `?debug` exposes the Game instance as `window.__wr` for headless checks.
+- M4: A shared `Modifiers` object is reset each step and written by power-ups, Roomba and abilities (speed, invincible, pass-low, pickup reach, coin and score multipliers, shield); Runner, Collision and scoring only read it.
+- M4: Power-ups spawn in the clear gaps between patterns (22% per gap), never inside patterns; Mystery Fish 7%, Daily Hunt letters 12%. Zoomies and Fish Rocket are start-only boosts offered for 3.5 s at run start from inventory.
+- M4: New players start with 2 Roombas, 1 Zoomies, 1 Fish Rocket so everything is reachable before the shop (M5).
+- M4: Double-tap (Space) fires the equipped ability when charged, otherwise starts a Roomba; E and the on-screen button also start a Roomba. One gesture, no dead taps.
+- M4: Shields resolve in order: invincible (Catnip, Zoomies, Rocket, Pounce dash) smashes the obstacle, then Milk Bubble, then Roomba; each absorbed hit grants 1.2 s grace.
+- M4: Cardboard Box passes through bodies up to 1.1 m tall (trash cans, hedges, bikes, sprinklers, fences, parcels), not cars or walls, and keeps the pack off your trail.
+- M4: Laser Dot picks the lane with no blocking body over the next 26 m (coins break ties) and doubles score while you are in it.
+- M4: Abilities charge from combo gains (1.2 combo total = full). Pounce is disabled during a Boss Chase (the truck is ahead). Purr Field reaches the cat's lane plus the neighbor lanes at any height.
+- M4: Nap Time freezes the simulation for 2 s (screen desaturates), then glides to the safest lane with 1 s grace.
+- M4: Lucky Bells live in `bell` slots on high-layer spots (35% fill chance), persist in the save, and all 9 grant the golden collar and +5% coins.
+- M4: Cat Doors are a rare hedge wall with glowing flaps; changing lane into the flap enters a 10 s Secret Alley (violet fog, coin river, rare-or-better loot, no obstacles).
+- M4: Daily Hunt word is picked by UTC day from a fixed list; progress resets each day; completion pays 500 coins and 1 Fish Bone straight to the profile.
+- M4: Boss Chase every 3000 m pauses the spawner; Duke's truck holds 30 m ahead and throws parcels/cans/bikes that arc onto the road; 10 dodges and he swerves off the road, dropping a chest (250 coins, 1 Fish Bone, rare+ loot).
+- M4: Catnip "psychedelic tint" and Nap desaturation are CSS filters on the canvas; speed lines are a CSS overlay. Cheap, no extra render passes.
+- M4: Easter eggs (9:09 winking statue, Ada's suitcase, butcher cameo) were not in this milestone's request; left for the juice pass.
+- M5: Save is now `wr.save` version 2 with a `migrate()` that upgrades the M3/M4 `wr.save.v1` profile in place (defaults fill new fields; nested objects merged).
+- M5: Upgrade levels are 1-based (level 1 = base). The doc's 5-step cost ladder (500 .. 25k) buys 5 levels, so 5-level upgrades top out at level 6; the satchel has 8 sizes (12 .. 60) bought with 7 costs.
+- M5: Power-up upgrades add +2 s per level as the doc says (replacing the M4 percentage placeholder).
+- M5: Agility also adds "coyote time": a short window to still jump after running off a ledge (0.08 s, +0.03 s per level).
+- M5: Run loot goes into a persistent Stash (60 items) when the run ends; overflow is auto-sold at base price. Tom's board, Sell, Sell All and set trades all work on the stash, so players can hold items for hot days.
+- M5: Daily board, challenges and the login calendar roll over at local midnight (`localDay`); the board is seeded by day, Secret Stock by 8-hour bucket, so every player sees the same prices.
+- M5: Haggle is once per visit; the bonus applies to one item of the next Sell (the doc says "one sale").
+- M5: Collection Sets: Junk Drawer (Tail Ring), Toy Box (Crown), Fancy Things (Professor Mittens), Duke's Stuff (Aviators). Each trade also gives +2% coins forever.
+- M5: Cats: Miso, Biscuit (5k), Noir (10k), Sushi (15 Fish Bones), Professor Mittens (Fancy Things set), Pixel (Paw Pass tier 30, free track for now). Luna and Duke's Nightmare wait for events / bells.
+- M5: 23 accessories over 6 slots; some are not for sale and come from sets, the 3-day login streak, the Paw Pass or Tom's Secret Stock.
+- M5: The Active Ability is chosen at the Scratching Post (it is a "cat move" you train).
+- M5: Paw Pass ships the free track only (30 tiers, stamps from runs, missions, sets, challenges and logins); the premium track comes with IAP in M9.
+- M5: Home is a real 3D room (separate scene) with raycast-tappable furniture and DOM washi-tape labels projected from 3D anchors. Miso is drawn at 0.62x in the room. Swipes on Home never start a run; RUN paw, front door, or keyboard Up/Space do.
+- M5: Not in this milestone: Photo Mode, outfit-set bonuses (Paris), Tip Jar (needs IAP), leaderboards, push notifications, crash replay clips.
+- M6: The intro is one comic page: three Three.js scenes rendered into stacked panel viewports through a custom ink + paper shader (depth and color Sobel edges with an 8 fps "boil" wobble, posterize, paper grain and fibres, wash-in reveal). Panels appear in sequence (about 8 s each, 24.6 s total) and earlier panels keep their parallax drift.
+- M6: The curved-world bend is switched off while the comic plays (it is a flat page) and restored after.
+- M6: Captions use Caveat (OFL, Google Fonts) as the handwritten font; Fredoka/Nunito stay for UI.
+- M6: Panel borders are SVG paths with slight hand wobble, drawn on with stroke-dash animation.
+- M6: Tutorial is the real RunSession at 0.65x speed with the spawner paused and a huge grace window. Each step places its setup 32 m ahead; time slows to 4% right before the obstacle until the right move is made, so it cannot be failed. A bot that only reacts to freezes finishes all 7 steps in the unit test.
+- M6: The tutorial's wall-kick step respawns its wall if the player runs past it; pickup steps respawn the pickup if missed.
+- M6: After "YOU'RE A NATURAL", the first real run starts in place (no menu). It has a Yarn Magnet at 75 m, Catnip at 260 m, 3x rare loot luck and loot in every quiet gap.
+- M6: After the first run, Old Tom always opens (even with an empty satchel) to introduce himself and pays a x2 newcomer bonus on everything for that visit.
+- M6: The free Bucket Hat waits until the player taps the Wardrobe after the first run (label pulses "Free hat!"); it is granted and equipped once.
+- M6: Saves from before onboarding existed (runs > 0) skip the first-session flow. Settings has "Replay intro" (comic + tutorial, no flags or rewards).
+- M6: `canShowInterstitial()` returns false for the first 3 sessions; there are no interstitials yet, this is the policy hook for M9.
+- M7: All particles are one `THREE.Points` draw call (1500 pooled). CPU only writes spawn attributes into a ring buffer (partial buffer uploads); motion, gravity, fade, spin, leaf sway, world scroll and the curved-world bend run in the vertex shader. Shapes (soft dot, star, confetti square, leaf, streak) are drawn in the fragment shader.
+- M7: Tone.js is code-split and loaded on the first user gesture (browsers need one to start audio), so boot stays fast; until then audio calls are no-ops.
+- M7: Maple Lane music is generated: I-vi-IV-V FM-piano chords, kick/snare/swung hats, triangle bass and a seeded pentatonic lead at 104 BPM (92 BPM home mode). Drums, bass and lead fade in at 0 / 14 / 18 m/s; the mix lowpasses to 900 Hz during power-ups and detunes +200 cents during Catnip. Stem updates are sent only when the state changes.
+- M7: SFX are synthesized voices built once (coin pentatonic ladder that climbs with streaks, mrrp, hiss, two-formant bark, whoosh, pop, cash register, thud, crash, stamp, tick). Shared voices get strictly increasing start times.
+- M7: Post FX via `postprocessing`: bloom (threshold 0.82, high tier only), vignette and SMAA. The renderer runs without MSAA. Quality tier is picked from the average frame time of frames 21-140: >24 ms low (no post, DPR 1.5), >18 ms medium (no bloom), else high.
+- M7: Hit-stop: 0.14 s freeze on a crash and 0.06 s on a stumble, before the dust cloud.
+- M7: Haptics behind `IHaptics`; the web version uses `navigator.vibrate` (Android browsers; iOS Safari ignores it). Real Taptic feedback comes with Capacitor in M9.
+- M7: The SVG wobble filter (feTurbulence + feDisplacementMap, scale 2.2) applies to buttons, cards, sheets and pills, not to the fast-changing run HUD numbers. Paper grain is a tiny inline SVG noise image.
+- M7: Performance check (headless, run state, Catnip active): 95 draw calls, 26k triangles, heap flat after GC. Hot-path loops over pools are indexed (no iterators). About 14 KB/s of short-lived garbage remains (V8 number boxing in not-yet-optimized code and DOM writes on coin pickups); Tone.js schedules its own events and allocates while music plays.
+- M8: Cities are data + kit: `src/data/city/<id>.ts` (CityDef) and `src/procgen/city/<id>.ts` (CityKit). Registries merge obstacles, loot, dogs and kits; `Track` is now generic and lays out whatever props a kit declares. See docs/ADDING_A_CITY.md.
+- M8: `LOOT_ITEMS` (was LOOT_MAPLE_LANE) is the global, append-only loot catalog with a `city` tag; runs roll from the current city's items. Old Tom's market stays at home and buys loot from every city (no "sells best at home" bonus yet).
+- M8: Obstacle ids are plain strings; per-instance colors use `tints` on the definition (cars, Fiats, Vespas).
+- M8: Rome hazards are behaviour flags: `weaves` (Vespas drive at 6 m/s and change lanes every 1.3-2.4 s, never within 14 m of the cat) and `drops` (laundry hangs overhead until 0.9 s away, falls in 0.5 s and lands as a jumpable pile).
+- M8: Rome shortcuts: fountain rims (walkable 0.8 m top) and striped market awnings (2.1 m high layer, reached from a rim, a Fiat or a wall-kick).
+- M8: Rome dogs: Bruno the Spinone lunges, Nico the Italian greyhound runs the Pack Rush. Duke rides a delivery scooter with a pizza box carrier and throws pizza boxes, crates and cafe tables.
+- M8: Rome music: 116 BPM swing in A minor (Am, Dm, E7, Am), accordion (detuned saws + vibrato) on the off-beats, oom-pah bass, tremolo mandolin (Karplus-Strong plucks) on a seeded pentatonic melody.
+- M8: Rome unlocks with a 3000 m best run, 20,000 coins or 40 Fish Bones. Paris, Berlin, Tokyo and Tbilisi are on the map as "coming soon". The tutorial and first run always happen in Maple Lane.
+- M8: Lucky Bells are now tracked per city (`bellsByCity`); the old `bells` list migrates to Maple Lane.
+- M9: Capacitor 8 with Swift Package Manager (no CocoaPods) for iOS; `ios/` and `android/` are committed, their build output is ignored.
+- M9: IAP via `@capgo/native-purchases` (StoreKit 2 + Play Billing in one plugin, Capacitor 8 compatible). Grants are applied locally on purchase; non-consumables restore silently at boot. No server receipt validation yet.
+- M9: Platform picked at boot (`Capacitor.isNativePlatform()`); native plugins are dynamic imports so the web bundle and mocks stay unchanged.
+- M9: Save on native uses Capacitor Preferences, preloaded into memory before the game starts and written through, so `Storage` stays synchronous.
+- M9: Privacy order: age gate (13+), UMP consent, then ATT soft pre-prompt and system prompt after session 2. Under-13 gets child-directed, non-personalized ads and no ATT.
+- M9: No Ads turns every rewarded placement into a free reward (still capped per day), as GAME_DESIGN 11.2 suggests.
+- M9: Interstitials: never in the first 4 sessions, every 3rd run at most, 180 s gap, never after a new best. Crates are never sold for money; odds are shown on a dedicated screen.
+- M9: Ad Zoomies head start offered on the boost bar (2/day); secret stock refresh by ad shifts the seeded stock instead of rerolling the whole shop.

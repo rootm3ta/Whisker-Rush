@@ -1,0 +1,199 @@
+.wr-phud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: #2a201c;
+}
+.wr-ptags {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 104px);
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.wr-ptag {
+  display: grid;
+  grid-template-columns: 12px auto;
+  grid-template-rows: auto 6px;
+  column-gap: 5px;
+  align-items: center;
+  background: #fbf6ec;
+  border: 2px solid #2a201c;
+  border-radius: 10px 8px 11px 9px;
+  box-shadow: 2px 2px 0 #2a201c;
+  padding: 2px 8px 4px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 110px;
+}
+.wr-ptag[hidden] {
+  display: none;
+}
+.wr-ptag i {
+  grid-row: span 2;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid #2a201c;
+}
+.wr-ptag b {
+  display: block;
+  height: 5px;
+  border: 1.5px solid #2a201c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.wr-ptag u {
+  display: block;
+  height: 100%;
+  background: #e8863a;
+  transform-origin: left;
+}
+.wr-hunt {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 84px);
+  right: 16px;
+  display: flex;
+  gap: 3px;
+}
+.wr-hunt span {
+  width: 18px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px dashed #2a201c;
+  border-radius: 5px;
+  opacity: 0.45;
+  background: #fbf6ec;
+}
+.wr-hunt span.on {
+  opacity: 1;
+  border-style: solid;
+  color: #d9562e;
+}
+.wr-banner {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  opacity: 0;
+  font-weight: 700;
+  font-size: 20px;
+  background: #2a201c;
+  color: #fbf6ec;
+  padding: 3px 14px;
+  border-radius: 12px 10px 13px 9px;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+.wr-banner.on {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.wr-boosts {
+  position: absolute;
+  left: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 92px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+.wr-boosts[hidden],
+.wr-boost[hidden] {
+  display: none;
+}
+.wr-boost {
+  font-size: 15px;
+  background: #ffd9a0;
+  animation: wr-boost-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.wr-roomba {
+  position: absolute;
+  left: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
+  pointer-events: auto;
+  font-size: 17px;
+  padding: 6px 10px;
+}
+.wr-ability {
+  --charge: 0%;
+  --ab: #d9562e;
+  position: absolute;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid #2a201c;
+  box-shadow: 3px 3px 0 #2a201c;
+  background: conic-gradient(var(--ab) var(--charge), #fbf6ec 0);
+  pointer-events: auto;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #2a201c;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.08s;
+}
+.wr-ability span {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: #fbf6ec;
+  border: 2px solid #2a201c;
+  line-height: 1;
+  padding: 2px;
+}
+.wr-ability.ready {
+  animation: wr-throb 0.6s ease-in-out infinite;
+}
+.wr-ability:active,
+.wr-roomba:active {
+  transform: scale(0.94);
+}
+.wr-speedlines {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.25s;
+  background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255, 255, 255, 0.55) 0deg 1.2deg, transparent 1.2deg 9deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 32%, #000 70%);
+  mask-image: radial-gradient(circle at 50% 45%, transparent 32%, #000 70%);
+}
+.wr-fast .wr-speedlines {
+  opacity: 1;
+  animation: wr-lines 0.12s steps(2) infinite;
+}
+@keyframes wr-lines {
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes wr-boost-in {
+  from {
+    transform: translateX(-120%);
+  }
+}
+canvas.fx-catnip {
+  animation: wr-catnip 1.2s linear infinite;
+}
+@keyframes wr-catnip {
+  from {
+    filter: saturate(1.6) hue-rotate(0deg);
+  }
+  to {
+    filter: saturate(1.6) hue-rotate(360deg);
+  }
+}
+canvas.fx-nap {
+  filter: grayscale(0.85) brightness(0.95);
+  transition: filter 0.3s;
+}

@@ -1,29 +1,20 @@
-/** One palette per city. Colors are hex numbers. */
-export interface CityPalette {
-  skyTop: number;
-  skyHorizon: number;
-  fog: number;
-  ground: number;
-  lane: number;
-  props: number[];
-  sun: number;
-  ambient: number;
-}
+import { MAPLE_LANE } from './city/mapleLane';
+import { ROME } from './city/rome';
+import type { CityDef, CityId } from './city/types';
 
-export const CITIES: Record<string, { name: string; palette: CityPalette }> = {
-  mapleLane: {
-    name: 'Maple Lane',
-    palette: {
-      skyTop: 0x7fb7e6,
-      skyHorizon: 0xffd9a8,
-      fog: 0xffd9a8,
-      ground: 0x8a8f99,
-      lane: 0xf3ead8,
-      props: [0xe0754f, 0x6fa36b, 0xf2c14e, 0x5b7fa6],
-      sun: 0xfff1d6,
-      ambient: 0xbcc8e8,
-    },
-  },
-};
+export type { BasePalette, CityDef, CityId, MusicTheme } from './city/types';
 
-export const FOG = { near: 40, far: 200 } as const;
+/** Playable cities. Adding a city: one data file in data/city plus one kit in procgen/city. */
+export const CITIES: Record<CityId, CityDef> = { mapleLane: MAPLE_LANE, rome: ROME };
+
+/** World Tour order, including cities that are not built yet (shown as "coming soon"). */
+export const WORLD_TOUR: readonly { id: string; name: string; x: number; y: number; playable: boolean }[] = [
+  { id: 'mapleLane', name: 'Maple Lane', x: MAPLE_LANE.map.x, y: MAPLE_LANE.map.y, playable: true },
+  { id: 'rome', name: 'Rome', x: ROME.map.x, y: ROME.map.y, playable: true },
+  { id: 'paris', name: 'Paris', x: 0.46, y: 0.3, playable: false },
+  { id: 'berlin', name: 'Berlin', x: 0.56, y: 0.26, playable: false },
+  { id: 'tokyo', name: 'Tokyo', x: 0.86, y: 0.4, playable: false },
+  { id: 'tbilisi', name: 'Tbilisi', x: 0.66, y: 0.38, playable: false },
+];
+
+export const FOG = { near: 30, far: 140 } as const;
