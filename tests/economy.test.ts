@@ -30,7 +30,7 @@ const rng = () => new Rng(1);
 
 describe('upgrade tables', () => {
   it('cost ladders increase and the satchel goes 12 -> 60', () => {
-    expect(COST_LADDER).toEqual([500, 1500, 4000, 10000, 25000]);
+    expect(COST_LADDER).toEqual([500, 1500, 3500, 7500, 15000]);
     for (const id of UPGRADE_IDS) {
       const c = UPGRADES[id].costs;
       expect(c.length).toBe(UPGRADES[id].max - 1);
@@ -39,7 +39,7 @@ describe('upgrade tables', () => {
     expect(satchelCapacity(1)).toBe(12);
     expect(satchelCapacity(SATCHEL_LEVELS.length)).toBe(60);
     expect(upgradeCost('agility', 1)).toBe(500);
-    expect(upgradeCost('agility', 5)).toBe(25000);
+    expect(upgradeCost('agility', 5)).toBe(15000);
     expect(upgradeCost('agility', 6)).toBeNull();
   });
 

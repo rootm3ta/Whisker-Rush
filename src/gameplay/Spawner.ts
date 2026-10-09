@@ -76,6 +76,8 @@ export class Spawner {
   /** While paused (Boss Chase, Secret Alley) no patterns are placed. */
   paused = false;
   hooks: SpawnHooks | null = null;
+  /** Playtest hook: every pattern placed (name, track position). */
+  onPlace: ((name: string, s: number) => void) | null = null;
   /** Lucky Whiskers multiplier for rare loot. */
   luck = 1;
   /** First run: every gap without a power-up gets a loot item. */
@@ -84,7 +86,10 @@ export class Spawner {
   lootMul = 1;
   /** Noir's passive: cat door patterns appear more often. */
   catDoorMul = 1;
-  private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
+  /** Recently placed pattern names: they are much less likely to come back right away. */
+  private readonly recent: string[] = [];
+  private readonly weightOf = (p: Pattern): number =>
+    (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight) * (this.recent.includes(p.name) ? SPAWNER.recentWeight : 1);
   private nextS: number = SPAWNER.firstAt;
   private tiers: Pattern[][] = tiersOf(CITIES.mapleLane.patterns);
   /** Per-district tier lists (district-only patterns join their district's list). */
@@ -100,6 +105,7 @@ export class Spawner {
     this.nextS = SPAWNER.firstAt;
     this.last = null;
     this.paused = false;
+    this.recent.length = 0;
   }
 
   /** Switches the pattern library and loot set to a city. */
@@ -135,7 +141,10 @@ export class Spawner {
       const tier = pickTier(this.nextS, this.rng);
       const p = pickPattern(this.listFor(tier, this.nextS), this.rng, this.last, this.weightOf);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
+      this.onPlace?.(p.name, this.nextS);
       this.last = p;
+      this.recent.push(p.name);
+      if (this.recent.length > SPAWNER.recentCount) this.recent.shift();
       const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
       this.placeGapExtras(this.nextS + p.length + gap / 2);
       this.nextS += p.length + gap;
@@ -174,7 +183,8 @@ export class Spawner {
           const color = tints ? rng.pick(tints) : 0xffffff;
           // Side-track things keep their side (the kit builds the track there), even in mirrored patterns.
           const ox = def.sideX !== undefined ? Math.sign(e.lane || 1) * def.sideX : x;
-          f.addObstacle(e.id, ox, s, e.len ?? def.length, color);
+          const ob = f.addObstacle(e.id, ox, s, e.len ?? def.length, color);
+          if (ob) ob.pattern = p.name;
           break;
         }
         case 'coins':

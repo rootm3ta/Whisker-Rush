@@ -10,7 +10,8 @@
     "test": "vitest run",
     "build:native": "CAPACITOR=1 npm run build && cap sync",
     "ios": "npm run build:native && cap open ios",
-    "android": "npm run build:native && cap open android"
+    "android": "npm run build:native && cap open android",
+    "sim": "SIM_FULL=1 vitest run tests/simulation.test.ts"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.2.1",

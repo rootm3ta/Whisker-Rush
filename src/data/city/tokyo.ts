@@ -47,7 +47,7 @@ const OBSTACLES: Record<string, ObstacleDef> = {
   // Delivery robots trundle along the lane (you catch up with them). Low: jump over.
   deliveryRobot: { ...base, length: 0.9, halfWidth: 0.6, body: [0, 0.8], rolls: 3.5, capacity: 8 },
   // Mamachari: city bicycles with baskets, weaving.
-  mamachari: { ...base, length: 1.7, halfWidth: 0.6, body: [0, 1.2], lethal: true, weaves: true, capacity: 8, tints: TOKYO_PALETTE.bikes },
+  mamachari: { ...base, length: 1.7, halfWidth: 0.6, body: [0, 1.2], weaves: true, capacity: 8, tints: TOKYO_PALETTE.bikes },
   // Crows swoop down to head height when you get close: slide under.
   crow: { ...base, length: 0.6, halfWidth: 1.2, body: [0.85, 2.2], drops: true, warn: 'caw', capacity: 8 },
   ramenCart: { ...base, length: 2.2, halfWidth: 1.1, body: [0, 1.4], lethal: true, warn: 'steam', capacity: 6 },
@@ -93,12 +93,19 @@ const NEON = 4;
 
 const PATTERNS: Pattern[] = [
   // Anywhere.
-  { name: 't-vending', tier: 1, weight: 1, length: 24, entries: [o('vendingMachine', L, 10), o('vendingMachine', R, 14), coins(C, 2, 8), coins(L, 10.2, 3, VEND, 1.2)] },
+  { name: 't-vending', tier: 1, weight: 1, length: 26, entries: [o('vendingMachine', L, 10), o('vendingMachine', R, 19), coins(C, 2, 8), coins(L, 10.2, 3, VEND, 1.2)] },
   { name: 't-mamachari', tier: 1, weight: 1, length: 30, entries: [o('mamachari', C, 24), coins(L, 4, 6), loot(R, 16)] },
   { name: 't-robots', tier: 1, weight: 1, length: 28, entries: [o('deliveryRobot', L, 10), o('deliveryRobot', R, 18), arc(L, 7, 5, 8), coins(C, 2, 8)] },
   { name: 't-awning-run', tier: 2, weight: 1, length: 30, entries: [o('vendingMachine', C, 4), o('tokyoAwning', C, 6), coins(C, 7, 4, AWN, 1.8), o('mamachari', L, 22), o('deliveryRobot', R, 12), bell(C, 12, AWN + 0.2)] },
-  { name: 't-overpass', tier: 2, weight: 0.9, length: 34, entries: [o('vendingMachine', C, 4), o('overpass', C, 6), coins(C, 7, 5, OVER, 2), o('ramenCart', L, 10), o('shutterWall', R, 6), loot(C, 14, OVER + 0.3)] },
+  { name: 't-overpass', tier: 2, weight: 0.9, length: 34, entries: [o('vendingMachine', C, 6), o('overpass', C, 8), coins(C, 9, 5, OVER, 2), o('ramenCart', L, 24), o('shutterWall', R, 10), loot(C, 16, OVER + 0.3)] },
   { name: 't-elevated', tier: 3, weight: 0.8, length: 40, entries: [o('tokyoStairs', C, 2), o('elevatedTrack', C, 9), coins(C, 10, 8, ELEV, 2.4), o('crowd', L, 20), o('mamachari', R, 28), bell(C, 26, ELEV + 0.2)] },
+  { name: 't-robot-pair', tier: 1, weight: 1, length: 26, entries: [o('deliveryRobot', C, 8), o('deliveryRobot', C, 20), coins(L, 4, 8), loot(R, 14)] },
+  { name: 't-vend-coins', tier: 1, weight: 0.9, length: 24, entries: [o('vendingMachine', C, 12), coins(C, 12.2, 3, VEND, 1.2), coins(L, 2, 6), coins(R, 16, 4)] },
+  { name: 't-bike-lane', tier: 1, weight: 0.9, length: 28, entries: [o('mamachari', L, 20), o('deliveryRobot', R, 12), arc(C, 6, 6, 10)] },
+  { name: 't-cart-corner', tier: 1, weight: 0.8, length: 26, entries: [o('ramenCart', R, 12), coins(C, 2, 10), bell(R, 13, 2.4)] },
+  { name: 't-awning-pair', tier: 2, weight: 0.9, length: 32, entries: [o('vendingMachine', L, 4), o('tokyoAwning', L, 6), o('tokyoAwning', R, 16), o('vendingMachine', R, 14), coins(L, 7, 4, AWN, 1.8), coins(R, 17, 4, AWN, 1.8), o('deliveryRobot', C, 18)] },
+  { name: 't-crowd-robot', tier: 2, weight: 0.9, length: 32, entries: [o('crowd', L, 20), o('deliveryRobot', C, 12), o('vendingMachine', R, 8), coins(R, 8.2, 3, VEND, 1.2), coins(C, 2, 4)] },
+  { name: 't-gauntlet', tier: 3, weight: 0.9, length: 38, entries: [o('vendingMachine', C, 6), o('mamachari', L, 24), o('deliveryRobot', R, 16), o('ramenCart', C, 22), o('crowd', R, 32), coins(C, 6.2, 3, VEND, 1.2)] },
   { name: 'cat-door-tokyo', tier: 2, weight: 0.12, length: 20, entries: [o('catDoorTokyo', L, 4), o('vendingMachine', C, 12), arc(C, 8, 5, 8)] },
   // Shibuya Crossing.
   { name: 't-scramble', tier: 1, weight: 1.2, length: 28, districts: [SHIBUYA], entries: [o('crowd', C, 18), coins(L, 4, 6), coins(R, 10, 5)] },

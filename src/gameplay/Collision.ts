@@ -14,6 +14,9 @@ export class Collision {
   private lastStumble = -Infinity;
   private grace = 0;
   crashed = false;
+  /** What the cat last ran into (obstacle id and its pattern), for playtest reports. */
+  lastHit = '';
+  lastHitPattern = '';
   /** Handles special pickups (power-ups, mystery fish, bells, letters, chests). */
   onSpecialPickup: ((kind: number, item: number) => void) | null = null;
 
@@ -28,6 +31,8 @@ export class Collision {
     this.lastStumble = -Infinity;
     this.grace = 0;
     this.crashed = false;
+    this.lastHit = '';
+    this.lastHitPattern = '';
   }
 
   get invulnerable(): boolean {
@@ -109,6 +114,8 @@ export class Collision {
       }
       if (this.grace > 0) continue;
       o.hit = true;
+      this.lastHit = o.id;
+      this.lastHitPattern = o.pattern;
       o.armed = false;
       if (m.absorb && m.absorb()) {
         this.grace = POWERUP_FX.afterGraceSec;

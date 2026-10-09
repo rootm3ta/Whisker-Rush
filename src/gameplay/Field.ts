@@ -25,6 +25,8 @@ export class Obstacle {
   dropping = false;
   /** Warning sound already played. */
   warned = false;
+  /** Pattern that placed it (playtest reports). */
+  pattern = '';
 }
 
 export class Coin {
@@ -85,6 +87,7 @@ export class Field implements RunnerWorld {
       o.weaveT = 0.5;
       o.dropping = false;
       o.warned = false;
+      o.pattern = '';
       if (o.def.drops) o.flight = HAZARDS.drop.fallSec;
       return o;
     }

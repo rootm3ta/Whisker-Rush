@@ -156,3 +156,8 @@ One line per judgment call.
 - S6: Both Tbilisi pups are Nagazi (slow, big, they block a lane on the Pack Rush); the tagged street dogs are allies, never chasers.
 - S6: Seasonal events live in data/events.ts. Tbilisoba (20 to 31 October): grape garlands and flags across Tbilisi streets and a 100% chance of a second loot item on every loot slot. `?festival=1` forces it.
 - S6: Fixed a Tone.js "start time" error during the home-to-run crossfade (the lo-fi layer and the run groove both hit the bass on beat one).
+- S7: The autoplay bot reads obstacles by closing speed (moving hazards included) with per-skill reaction, look-ahead and mistake rates in data/autoplay.ts; the simulator runs the real RunSession headless.
+- S7: Weaving traffic (Vespa, mamachari) and Tbilisi side tosses now stumble instead of killing; a hazard you cannot see coming should cost a stumble, not the run.
+- S7: Spawner avoids the last 8 patterns (weight x0.12) rather than banning them, so small libraries still work.
+- S7: Upgrade ladder flattened to 500/1500/3500/7500/15000 so a casual player maxes one upgrade in about 80 runs.
+- S7: PNG icons (180, 512) added because iOS ignores SVG touch icons.

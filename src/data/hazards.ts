@@ -6,7 +6,7 @@ export const HAZARDS = {
     /** Time between lane changes. */
     every: [1.3, 2.4] as const,
     /** No lane changes this close to the cat (fair reaction distance, m). */
-    minAhead: 14,
+    minAhead: 20,
     laneRate: 4,
   },
   /** Warning sounds fire this many seconds before the cat reaches the hazard. */

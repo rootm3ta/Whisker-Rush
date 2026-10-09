@@ -57,10 +57,10 @@ const OBSTACLES: Record<string, ObstacleDef> = {
   bathDome: { ...base, length: 4, halfWidth: 1.3, body: [0, DOME], top: DOME, kickable: true, capacity: 6 },
   oldWall: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 8 },
   catDoorTbilisi: { ...base, length: 10, halfWidth: 1.2, body: [0, 2.2], top: 2.2, lethal: true, kickable: true, capacity: 2, catDoor: true },
-  marketTable: { ...base, length: 1.6, halfWidth: 1.1, body: [0, 0.9], top: 0.9, lethal: true, capacity: 10 },
+  marketTable: { ...base, length: 1.6, halfWidth: 1.1, body: [0, 0.9], top: 0.9, capacity: 10 },
   // What Duke throws from his marshrutka.
   khinkaliToss: { ...base, length: 0.8, halfWidth: 0.8, body: [0, 0.7], capacity: 10 },
-  churchkhelaToss: { ...base, length: 1.0, halfWidth: 0.9, body: [0, 0.6], lethal: true, capacity: 10 },
+  churchkhelaToss: { ...base, length: 1.0, halfWidth: 0.9, body: [0, 0.6], capacity: 10 },
 };
 
 const LOOT: LootItem[] = [
@@ -91,7 +91,14 @@ const PATTERNS: Pattern[] = [
   { name: 'g-baker', tier: 1, weight: 0.9, length: 28, entries: [o('tonisTray', C, 18), o('churchkhela', L, 10), coins(R, 4, 8)] },
   // Balcony hopping: short balconies with gaps, reached from a marshrutka roof or a wall-kick.
   { name: 'g-balcony-hop', tier: 2, weight: 1.2, length: 40, entries: [o('marketTable', C, 4), o('balconyRun', C, 8), o('balconyRun', C, 15.5), o('balconyRun', C, 23), coins(C, 9, 3, BALC, 1.6), coins(C, 16.5, 3, BALC, 1.6), coins(C, 24, 3, BALC, 1.6), bell(C, 26, BALC + 0.4), o('cellarDoor', L, 20)] },
-  { name: 'g-balcony-zigzag', tier: 3, weight: 1, length: 44, entries: [o('oldWall', L, 2), o('balconyRun', L, 12), o('balconyRun', C, 19), o('balconyRun', R, 26), coins(L, 13, 3, BALC, 1.6), coins(C, 20, 3, BALC, 1.6), coins(R, 27, 3, BALC, 1.6), o('marshrutka', C, 34), bell(R, 29, BALC + 0.4)] },
+  { name: 'g-balcony-zigzag', tier: 3, weight: 1, length: 44, entries: [o('oldWall', L, 8), o('balconyRun', L, 18), o('balconyRun', C, 25), o('balconyRun', R, 32), coins(L, 19, 3, BALC, 1.6), coins(C, 26, 3, BALC, 1.6), coins(R, 33, 3, BALC, 1.6), bell(R, 35, BALC + 0.4)] },
+  { name: 'g-cellars', tier: 1, weight: 1, length: 26, entries: [o('cellarDoor', L, 8), o('cellarDoor', R, 16), coins(C, 2, 10), loot(L, 14)] },
+  { name: 'g-table-hop', tier: 1, weight: 0.9, length: 24, entries: [o('marketTable', C, 10), coins(C, 10.2, 2, 1.3, 1.2), coins(L, 4, 6), coins(R, 14, 4)] },
+  { name: 'g-pothole-line', tier: 1, weight: 0.9, length: 28, entries: [o('pothole', C, 8), o('pothole', C, 16), o('pothole', C, 24), arc(C, 6, 4, 4), arc(C, 14, 4, 4), coins(L, 4, 6)] },
+  { name: 'g-strings', tier: 1, weight: 0.9, length: 26, entries: [o('churchkhela', C, 12), o('churchkhela', R, 18), coins(L, 2, 10)] },
+  { name: 'g-baker-rooster', tier: 2, weight: 0.9, length: 32, entries: [o('tonisTray', L, 20), o('rooster', R, 12), o('pothole', C, 8), coins(C, 14, 6), loot(R, 24)] },
+  { name: 'g-two-tables', tier: 2, weight: 0.9, length: 30, entries: [o('marketTable', L, 6), o('marketTable', R, 14), o('churchkhela', C, 22), coins(L, 6.2, 2, 1.3, 1.2), coins(R, 14.2, 2, 1.3, 1.2)] },
+  { name: 'g-old-street', tier: 3, weight: 0.9, length: 38, entries: [o('marshrutka', L, 26), o('cellarDoor', C, 8), o('pothole', R, 14), o('churchkhela', C, 22), o('rooster', R, 30), coins(C, 2, 4)] },
   { name: 'cat-door-tbilisi', tier: 2, weight: 0.12, length: 20, entries: [o('catDoorTbilisi', L, 4), o('pothole', C, 12), arc(C, 8, 5, 8)] },
   // Old Town (Kala): barrels rolling down the slope, laundry lines.
   { name: 'g-barrels', tier: 1, weight: 1.3, length: 30, districts: [OLD_TOWN], entries: [o('wineBarrel', L, 22), o('wineBarrel', R, 28), coins(C, 4, 8), bell(C, 16, BALC)] },

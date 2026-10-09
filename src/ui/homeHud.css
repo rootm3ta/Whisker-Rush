@@ -283,3 +283,32 @@
     filter: brightness(1.25);
   }
 }
+
+/* S7 audit: 44 pt tap areas on the top bar and the Paw Pass ribbon. */
+.wr-gear {
+  width: 44px;
+  height: 44px;
+}
+.wr-mult,
+.wr-ribbon {
+  position: relative;
+}
+.wr-mult::before,
+.wr-ribbon::before {
+  content: '';
+  position: absolute;
+  inset: -7px -4px;
+}
+.wr-topbar > * {
+  flex-shrink: 0;
+}
+/* Narrow phones (iPhone SE): the Shop button shows only its purse icon. */
+@media (max-width: 380px) {
+  .wr-shop span {
+    display: none;
+  }
+  .wr-pill {
+    padding: 2px 7px;
+    font-size: 16px;
+  }
+}

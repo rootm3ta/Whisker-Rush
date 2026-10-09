@@ -79,6 +79,8 @@ import { curveUniforms } from '../render/ToonMaterial';
 import { LOOT_ITEMS } from '../data/pickups';
 import { OBSTACLES } from '../data/obstacles';
 import { activeEvent } from '../data/events';
+import { Autopilot } from '../gameplay/Autopilot';
+import { BOT_SKILLS, type BotSkillId } from '../data/autoplay';
 import { screenUniforms } from '../procgen/signs';
 import type { BasePalette } from '../data/cities';
 import { EventBus } from './EventBus';
@@ -142,6 +144,8 @@ export class Game {
   private readonly tour: HomeTour;
   private readonly debug: DebugMenu;
   private homeTime = 0;
+  /** Playtest bot (`?autoplay=1` or `?autoplay=expert`, or the debug menu). */
+  private autopilot: Autopilot | null = null;
   /** RUN paw rect for the tour spotlight (measured once per tour). */
   private pawRect: DOMRect | null = null;
   private readonly comic: Comic;
@@ -243,6 +247,10 @@ export class Game {
     for (const ev of Object.keys(WINDOW.events) as WindowEvent[]) this.debug.add('Ambient events', ev, () => this.home.windowView.play(ev));
     for (const tod of Object.keys(WINDOW.times) as TimeOfDay[]) this.debug.add('Time of day', tod, () => this.home.setTime(tod));
     this.debug.add('Home', 'Replay tour', () => this.replayTour());
+    const auto = new URLSearchParams(location.search).get('autoplay');
+    if (auto) this.autopilot = new Autopilot(auto in BOT_SKILLS ? (auto as BotSkillId) : 'casual');
+    for (const s of Object.keys(BOT_SKILLS) as BotSkillId[]) this.debug.add('Autoplay', s, () => (this.autopilot = new Autopilot(s)));
+    this.debug.add('Autoplay', 'off', () => (this.autopilot = null));
     // Per city: force every hazard, the boss, the Pack Rush, secrets, loot and districts.
     for (const c of Object.values(CITIES)) {
       const sec = `${c.name} (start a run there first)`;
@@ -387,6 +395,10 @@ export class Game {
           },
           update: (dt) => {
             this.input.buffer.process(this.simTime, this.handleRunAction);
+            if (this.autopilot) {
+              const a = this.autopilot.decide(this.run, dt);
+              if (a >= 0) this.run.handleAction(a);
+            }
             this.run.step(dt);
             this.track.step(this.run.runner.distance);
             if (this.tutorial.active) this.updateTutorial(dt);

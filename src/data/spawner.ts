@@ -8,6 +8,9 @@ export const SPAWNER = {
   /** Gap between patterns scales with speed so reaction time stays fair. */
   gapSec: 0.85,
   mirrorChance: 0.5,
+  /** Patterns placed in the last `recentCount` slots get their weight times `recentWeight`. */
+  recentCount: 8,
+  recentWeight: 0.12,
   /** Rows are chosen by the last `from` <= distance. Weights index tier 1..3. */
   tierTable: [
     { from: 0, weights: [1, 0, 0] },

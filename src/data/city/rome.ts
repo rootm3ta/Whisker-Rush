@@ -46,7 +46,7 @@ const OBSTACLES: Record<string, ObstacleDef> = {
   planter: { ...base, length: 1.0, halfWidth: 1.1, body: [0, 0.85], capacity: 12 },
   cafeTable: { ...base, length: 1.0, halfWidth: 1.2, body: [0, 0.9], capacity: 10 },
   // Vespas drive along slower than you and weave between lanes. Low enough to jump.
-  vespa: { ...base, length: 1.6, halfWidth: 0.75, body: [0, 1.15], lethal: true, weaves: true, capacity: 8, tints: ROME_PALETTE.vespas },
+  vespa: { ...base, length: 1.6, halfWidth: 0.75, body: [0, 1.15], weaves: true, capacity: 8, tints: ROME_PALETTE.vespas },
   fiat: { ...base, length: 3.4, halfWidth: 1.0, body: [0, 1.3], top: 1.3, lethal: true, kickable: true, capacity: 10, tints: ROME_PALETTE.fiats },
   apeTruck: { ...base, length: 4.5, halfWidth: 1.15, body: [0, 2.4], top: 2.4, lethal: true, kickable: true, capacity: 6 },
   // Laundry falls from the balconies when you get close, landing as a pile you jump.
