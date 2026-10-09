@@ -106,7 +106,49 @@ const BUILD: Record<string, (c: readonly number[]) => THREE.Object3D> = {
     return group(...wings, mesh(new THREE.SphereGeometry(0.022, 6, 4), c[0], 0, 0, -0.12));
   },
   goldChain: (c) => group(mesh(new THREE.TorusGeometry(0.17, 0.014, 4, 22), c[0], 0, 0.02, 0.0), mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 12), c[0], 0, -0.1, -0.12)),
+  svanHat: (c) => {
+    // Round felt Svan cap with a stitched rim pattern.
+    const cap = mesh(new THREE.SphereGeometry(0.15, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), c[0], 0, R * 0.78, 0);
+    cap.scale.y = 0.55;
+    const rim = mesh(new THREE.TorusGeometry(0.15, 0.014, 5, 20), c[1], 0, R * 0.79, 0);
+    rim.rotation.x = Math.PI / 2;
+    return group(cap, rim);
+  },
+  headphones: (c) => {
+    // Worn around the neck, streetwear style.
+    const band = mesh(new THREE.TorusGeometry(0.15, 0.016, 5, 18, Math.PI), c[0], 0, 0.02, -0.02);
+    band.rotation.x = Math.PI / 2 + 0.3;
+    const cups = [-1, 1].map((sx) => {
+      const cup = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 12), c[1], sx * 0.15, 0.0, -0.04);
+      cup.rotation.z = Math.PI / 2;
+      return cup;
+    });
+    return group(band, ...cups);
+  },
+  hornCharm: (c) => {
+    const cord = mesh(new THREE.TorusGeometry(0.15, 0.008, 4, 18), c[1], 0, 0.04, 0.03);
+    cord.rotation.x = Math.PI / 2 + 0.3;
+    const horn = mesh(new THREE.ConeGeometry(0.03, 0.12, 8), c[0], 0, -0.08, -0.13);
+    horn.rotation.z = 2.4;
+    return group(cord, horn);
+  },
   // Back: on top of the torso.
+  hoodie: (c) => {
+    // Oversized hoodie: a soft draped body piece with a hood bunched at the neck.
+    const body = mesh(new THREE.SphereGeometry(0.2, 14, 10), c[0], 0, -0.06, 0.02);
+    body.scale.set(1.05, 0.75, 1.5);
+    const hood = mesh(new THREE.TorusGeometry(0.11, 0.045, 6, 14), c[0], 0, 0.04, -0.24);
+    hood.rotation.x = 1.1;
+    const strings = [-1, 1].map((sx) => mesh(new THREE.BoxGeometry(0.01, 0.08, 0.01), c[1], sx * 0.04, -0.06, -0.31));
+    return group(body, hood, ...strings);
+  },
+  chokha: (c) => {
+    // Tiny chokha: dark coat with gold gazyri (cartridge pockets) across the chest.
+    const coat = mesh(new THREE.SphereGeometry(0.2, 14, 10), c[0], 0, -0.06, 0.02);
+    coat.scale.set(1.05, 0.72, 1.45);
+    const pockets = [-1, 1].flatMap((sx) => [0, 1, 2].map((i) => mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 6), c[1], sx * (0.12 + i * 0.02), 0.02, -0.22 + i * 0.03)));
+    return group(coat, ...pockets);
+  },
   backpack: (c) => group(mesh(new THREE.BoxGeometry(0.22, 0.16, 0.24), c[0], 0, 0.07, 0.05), mesh(new THREE.BoxGeometry(0.23, 0.05, 0.12), c[1], 0, 0.14, -0.02), mesh(new THREE.BoxGeometry(0.24, 0.04, 0.03), c[1], 0, 0.0, -0.08)),
   cape: (c) => {
     const cloth = mesh(new THREE.BoxGeometry(0.38, 0.02, 0.62), c[0], 0, 0.02, 0.22);
@@ -147,7 +189,7 @@ const BUILD: Record<string, (c: readonly number[]) => THREE.Object3D> = {
 const ANCHOR: Record<Exclude<Slot, 'trail'>, (rig: CatRig) => { parent: THREE.Object3D; pos: [number, number, number] }> = {
   head: (r) => ({ parent: r.head, pos: [0, 0, 0] }),
   eyes: (r) => ({ parent: r.head, pos: [0, 0, 0] }),
-  neck: (r) => ({ parent: r.body, pos: [0, 0.1, -0.36] }),
+  neck: (r) => ({ parent: r.neck, pos: [0, -0.02, 0.02] }),
   back: (r) => ({ parent: r.body, pos: [0, S.torsoRadius + 0.01, 0.05] }),
   tail: (r) => ({ parent: r.tail[r.tail.length - 1], pos: [0, 0, S.tailSegLength * 0.4] }),
 };

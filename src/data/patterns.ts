@@ -1,4 +1,5 @@
 import type { ObstacleId } from './obstacles';
+import type { PowerUpId } from './powerups';
 
 
 /** Lane index: -1 left, 0 center, 1 right. */
@@ -12,7 +13,9 @@ export type PatternEntry =
   /** Clothesline (grind) with socks hanging along it. */
   | { t: 'line'; lane: Lane; z: number; len: number; socks: number }
   /** Lucky Bell slot (only sometimes filled, see BELLS.slotChance). */
-  | { t: 'bell'; lane: Lane; z: number; y: number };
+  | { t: 'bell'; lane: Lane; z: number; y: number }
+  /** A specific power-up pickup (Tbilisi's cable car gondola is a Fish Rocket variant). */
+  | { t: 'power'; id: PowerUpId; lane: Lane; z: number; y: number };
 
 export interface Pattern {
   name: string;
@@ -20,6 +23,8 @@ export interface Pattern {
   weight: number;
   length: number;
   entries: PatternEntry[];
+  /** Only spawns in these districts (index into the city's `districts`); omitted = anywhere. */
+  districts?: readonly number[];
 }
 
 export const L = -1 as const;
@@ -32,3 +37,4 @@ export const arc = (lane: Lane, z: number, n: number, len: number, h = 1.5, y = 
 export const loot = (lane: Lane, z: number, y = 0.75): PatternEntry => ({ t: 'loot', lane, z, y });
 export const line = (lane: Lane, z: number, len: number, socks = 3): PatternEntry => ({ t: 'line', lane, z, len, socks });
 export const bell = (lane: Lane, z: number, y: number): PatternEntry => ({ t: 'bell', lane, z, y });
+export const power = (id: PowerUpId, lane: Lane, z: number, y = 1.0): PatternEntry => ({ t: 'power', id, lane, z, y });

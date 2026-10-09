@@ -3,7 +3,8 @@ import './meta.css';
 export const ICON = {
   coin: `<svg viewBox="0 0 24 24" class="wr-ico"><circle cx="12" cy="12" r="9.2" fill="#f5c542" stroke="#2a201c" stroke-width="2"/><path d="M8.6 14.6c.8 1.3 2.1 1.9 3.5 1.9 1.7 0 2.9-.9 2.9-2.2 0-2.9-6-1.6-6-4.6 0-1.2 1.2-2.2 2.9-2.2 1.2 0 2.3.5 3 1.4M12 5.8v1.6M12 16.5v1.7" fill="none" stroke="#2a201c" stroke-width="1.6" stroke-linecap="round"/></svg>`,
   bone: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M3 12h15M6 8v8M9 7v10M12 8v8M15 9v6" stroke="#2a201c" stroke-width="2" stroke-linecap="round"/><path d="M18 12l4-3v6z" fill="#e6f2f7" stroke="#2a201c" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
-  gear: `<svg viewBox="0 0 24 24" class="wr-ico"><circle cx="12" cy="12" r="3.4" fill="none" stroke="#2a201c" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1" stroke="#2a201c" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  gear: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M18.80 10.34 L21.49 10.57 L21.49 13.43 L18.80 13.66 L17.98 15.63 L19.73 17.70 L17.70 19.73 L15.63 17.98 L13.66 18.80 L13.43 21.49 L10.57 21.49 L10.34 18.80 L8.37 17.98 L6.30 19.73 L4.27 17.70 L6.02 15.63 L5.20 13.66 L2.51 13.43 L2.51 10.57 L5.20 10.34 L6.02 8.37 L4.27 6.30 L6.30 4.27 L8.37 6.02 L10.34 5.20 L10.57 2.51 L13.43 2.51 L13.66 5.20 L15.63 6.02 L17.70 4.27 L19.73 6.30 L17.98 8.37Z" fill="#fbf6ec" stroke="#2a201c" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="#fbf6ec" stroke="#2a201c" stroke-width="1.8"/></svg>`,
+  purse: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M5 9.5h14l-1.2 9.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" fill="#f2c14e" stroke="#2a201c" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 9.5a3.5 3.5 0 0 1 7 0" fill="none" stroke="#2a201c" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="14.5" r="1.6" fill="#2a201c"/></svg>`,
   close: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M6 6.5l11.5 11M17.5 6L6.2 17.8" stroke="#2a201c" stroke-width="2.6" stroke-linecap="round"/></svg>`,
   paw: `<svg viewBox="0 0 24 24" class="wr-paw-ico"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6" cy="10" r="2.2"/><circle cx="9.6" cy="6.4" r="2.2"/><circle cx="14.4" cy="6.4" r="2.2"/><circle cx="18" cy="10" r="2.2"/></svg>`,
   bag: `<svg viewBox="0 0 24 24" class="wr-ico"><path d="M5.2 9.1c-.4 4.3-.2 8.6.6 11.2 3.9 1 8.4 1 12.4 0 .8-2.7 1-6.9.6-11.2-4.6-.9-9-.9-13.6 0z" fill="#c8915a" stroke="#2a201c" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 9c.1-3 1.4-5 3.4-5s3.3 2 3.4 5" fill="none" stroke="#2a201c" stroke-width="2" stroke-linecap="round"/></svg>`,
@@ -50,6 +51,8 @@ export class Sheet {
 
   open(): void {
     if (!this.el.hidden) return;
+    // The most recently opened sheet always sits on top of the others.
+    this.el.parentElement?.appendChild(this.el);
     this.el.hidden = false;
     overlays.open++;
   }

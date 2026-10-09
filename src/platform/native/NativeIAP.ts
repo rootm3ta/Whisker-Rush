@@ -1,5 +1,5 @@
 import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
-import type { IapProduct, IIAP } from '../IAP';
+import type { IapProduct, IIAP, PurchaseResult } from '../IAP';
 
 /** StoreKit 2 (iOS) / Play Billing (Android) via @capgo/native-purchases. */
 export class NativeIAP implements IIAP {
@@ -18,12 +18,14 @@ export class NativeIAP implements IIAP {
     return this.list;
   }
 
-  async purchase(sku: string, consumable: boolean): Promise<boolean> {
+  async purchase(sku: string, consumable: boolean): Promise<PurchaseResult> {
     try {
       const t = await NativePurchases.purchaseProduct({ productIdentifier: sku, productType: PURCHASE_TYPE.INAPP, quantity: 1, isConsumable: consumable });
-      return !!t.transactionId;
-    } catch {
-      return false;
+      return t.transactionId ? 'ok' : 'failed';
+    } catch (e) {
+      // StoreKit and Play Billing both report a user cancel as an error mentioning "cancel".
+      const msg = `${(e as { code?: string }).code ?? ''} ${(e as Error).message ?? ''}`;
+      return /cancel/i.test(msg) ? 'cancelled' : 'failed';
     }
   }
 

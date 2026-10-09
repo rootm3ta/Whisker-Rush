@@ -1,0 +1,100 @@
+.wr-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: auto;
+  font-family: 'Nunito', sans-serif;
+  color: #2a201c;
+  overflow: hidden;
+}
+.wr-tour[hidden] {
+  display: none;
+}
+.wr-tour-spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 3px dashed #fbf6ec;
+  box-shadow: 0 0 0 200vmax rgba(26, 18, 14, 0.62), inset 0 0 24px rgba(255, 217, 138, 0.6);
+  transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1), width 0.35s, height 0.35s;
+  animation: wr-tour-breathe 1.6s ease-in-out infinite;
+}
+@keyframes wr-tour-breathe {
+  50% {
+    border-color: #ffd98a;
+  }
+}
+.wr-tour-arrow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.wr-tour-arrow path {
+  fill: none;
+  stroke: #fbf6ec;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wr-tour-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #fbf6ec;
+  border: 3px solid #2a201c;
+  border-radius: 16px 12px 18px 10px;
+  box-shadow: 3px 4px 0 #2a201c;
+  padding: 12px 14px 10px;
+  transition: transform 0.35s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+.wr-tour-card p {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.wr-tour-card.pop p {
+  animation: wr-tour-pop 0.3s ease-out;
+}
+@keyframes wr-tour-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.wr-tour-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wr-tour-skip {
+  background: none;
+  border: none;
+  font: 600 14px 'Nunito', sans-serif;
+  color: #6b5a4e;
+  text-decoration: underline;
+  min-height: 44px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.wr-tour-dots {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.wr-tour-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #2a201c;
+}
+.wr-tour-dots i.on {
+  background: #e8863a;
+}
+.wr-tour-next {
+  min-height: 44px;
+}

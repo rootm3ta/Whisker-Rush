@@ -91,7 +91,7 @@ export class MarketScreen {
     const p = this.ctx.save.profile;
     const chip = (e: BoardEntry) => `<span class="${e.mul > 1 ? 'wr-chip-hot' : 'wr-chip-cold'}">${esc(LOOT_ITEMS[e.item].name)} x${e.mul}</span>`;
     let html = this.bonus > 1 ? `<p class="wr-chip-hot" style="display:block;text-align:center">Newcomer bonus: x${this.bonus} on everything today</p>` : '';
-    html += `<p class="wr-note">Today's board (resets at midnight):</p><div>${this.board.map(chip).join('')}</div>`;
+    html += `<p class="wr-note">Today's board (resets at midnight). <b>Hot</b> items sell for more (x2.5), <b>cold</b> ones for less: hold them for another day.</p><div>${this.board.map(chip).join('')}</div>`;
     if (!this.doubledThisVisit && Object.keys(this.ctx.save.profile.stash).length > 0) {
       html += `<button class="wr-btn wr-btn-sm" data-act="double" style="margin-top:6px">Watch ad: x2 on everything this visit</button>`;
     } else if (this.doubledThisVisit) html += `<p class="wr-note"><b>x2 loot value this visit.</b></p>`;

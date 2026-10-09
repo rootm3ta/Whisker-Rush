@@ -6,7 +6,7 @@ import type { Rarity } from '../data/pickups';
 import { POWERUPS, POWERUP_IDS, type PowerUpId } from '../data/powerups';
 import { BELLS, CAT_DOOR, DAILY_HUNT, MYSTERY_FISH } from '../data/secrets';
 import type { Profile } from '../meta/Save';
-import type { CityId } from '../data/cities';
+import { CITIES, type CityId } from '../data/cities';
 import { PickupKind, type Field } from './Field';
 import type { PowerUps } from './PowerUps';
 import type { Runner } from './Runner';
@@ -17,8 +17,9 @@ export function dayNumber(now: number): number {
   return Math.floor(now / 86_400_000);
 }
 
-export function huntWord(day: number): string {
-  return DAILY_HUNT.words[((day % DAILY_HUNT.words.length) + DAILY_HUNT.words.length) % DAILY_HUNT.words.length];
+/** The day's word; a city with its own words (Tokyo week, Tbilisi week) uses those. */
+export function huntWord(day: number, words: readonly string[] = DAILY_HUNT.words): string {
+  return words[((day % words.length) + words.length) % words.length];
 }
 
 /** Rolls a loot item index of at least `min` rarity from a city's set. */
@@ -67,8 +68,9 @@ export class Secrets {
     this.bellsSpawned.clear();
     this.letterOnFieldUntil = -Infinity;
     const day = dayNumber(now);
-    this.word = huntWord(day);
-    if (profile && profile.hunt.day !== day) profile.hunt = { day, found: [] };
+    const cityWords = CITIES[city].huntWords;
+    this.word = huntWord(day, cityWords ?? DAILY_HUNT.words);
+    if (profile && (profile.hunt.day !== day || (profile.hunt.word && profile.hunt.word !== this.word))) profile.hunt = { day, found: [], word: this.word };
   }
 
   /** Bell coin bonus (+5% once all bells in the city are found). */

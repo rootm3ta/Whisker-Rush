@@ -111,3 +111,53 @@ One line per judgment call.
 - M9: No Ads turns every rewarded placement into a free reward (still capped per day), as GAME_DESIGN 11.2 suggests.
 - M9: Interstitials: never in the first 4 sessions, every 3rd run at most, 180 s gap, never after a new best. Crates are never sold for money; odds are shown on a dedicated screen.
 - M9: Ad Zoomies head start offered on the boost bar (2/day); secret stock refresh by ad shifts the seeded stock instead of rerolling the whole shop.
+- S1: iOS audio root cause: Tone.start() ran after an async import, outside the tap, and the unlock listened to pointerdown. Now `src/audio/unlock.ts` creates and resumes a raw AudioContext synchronously in the first touchend/click/keydown, and Tone adopts it via setContext.
+- S1: Ringer switch: `navigator.audioSession.type = 'playback'` where supported, plus a looping silent WAV (built in code as a Blob URL, 8 kB) started in the same tap. WAV instead of base64 MP3: no binary blob in the source, same effect.
+- S1: Unlock listeners use the capture phase (the comic stops propagation) and stay bound after unlock as a cheap "resume if iOS suspended us" hook, instead of being removed.
+- S1: Context suspends and the silent loop pauses when the page is hidden, so nothing plays in the background or shows on the lock screen.
+- S1: Home music is a lo-fi version of the city theme: homeBpm (Maple 92, Rome lowered to 90), 16th swing, warm lowpass, soft kick and rim, vinyl crackle; crossfades into the run theme over 1.6 s.
+- S2: Hotspot labels are real buttons (56 pt hit area via an invisible pad) laid out every frame by a small allocation-free solver (`ui/labelLayout.ts`) that tries nearby offsets, avoids the top bar, logo, Best ribbon, RUN paw and the window, and keeps its last choice to avoid flicker.
+- S2: Halos are additive glow sprites placed just behind each object, so the object hides the centre and the glow reads as a rim; this avoids an outline post pass.
+- S2: Miso on the couch is now the Missions hotspot (the notebook still works); poking her for reactions is replaced by that.
+- S2: The living window is a real hole in the back wall with a low-poly street behind it, so it gets free parallax from the camera drift. Static props are one merged vertex-coloured mesh; about 9 draw calls visible at once.
+- S2: Time of day: morning from 5, golden hour from 12, dusk from 18, night from 21 (local clock; `?tod=night` to test). Room sun, ambient and a lamp light follow it.
+- S2: The tour spotlights the RUN paw for the Run step, because the door is hidden behind the fridge from the Home camera.
+- S2: Debug menu (`?debug`, corner DBG button) with ambient events, time of day and tour replay; later cities add their own sections.
+- S3: The shop is "Pearl's Treat Boutique". Pearl is a hand-drawn animated SVG (blink, tail, grooming, register taps, eyes follow the card you touch, happy spin on purchase) rather than a second 3D character, to keep the shop cheap.
+- S3: 3D cat previews use one small extra WebGL context (`render/Turntable.ts`): the hero spins live, carousel and confirm art are cached still snapshots, so only one preview canvas renders at a time.
+- S3: No strike-through prices: nothing in the catalog is sold separately for a higher price, so any "was" price would be fake. `BOUTIQUE.wasUsd` exists for genuine cases.
+- S3: Hero = Starter Pack during its 72 h, then this week's bundle (counts down to the weekly rotation), then the Coin Doubler. All cat bundles also sit in the carousel.
+- S3: Daily gift cycles a 7-day table by local day; the ad gift (new `shopGift` rewarded placement, 1 per day) unlocks after the free one.
+- S3: IIAP.purchase now returns 'ok' | 'cancelled' | 'failed' so the shop can explain what happened; the web mock store offers Buy, Simulate failure and Cancel.
+- S3: Paw Pass products moved to the Pass screen (it buys through the same confirm sheet). Fish Bones S retired from the shelf (kept in the catalog for receipts).
+- S3: Sheets re-append themselves on open so the most recently opened sheet is always on top (odds over the boutique, boutique over the Pass).
+- S4: CC0 model sourcing failed (poly.pizza blocked, Quaternius only via itch/Drive pages); details and manual drop-in paths in docs/ASSETS.md.
+- S4: Characters are smooth SDF bodies (ellipsoids + tapered capsules, smooth-min blended), meshed with surface nets (simpler than marching cubes, no tables) at a fine grid, vertices snapped onto the surface, normals from the SDF gradient, then edge-collapse decimated (curvature-aware, re-projected) to about 4k triangles.
+- S4: The rig keeps its old node names (body, head, legs, tail...) but they are now bones driving one skinned mesh, so the existing animation, accessories and comic scenes keep working.
+- S4: Coat patterns, eyes, ears, nose and dog accessories are vertex colours / rigid parts inside the same skinned mesh: one draw call per character body plus one for the outline. Whiskers stay a line set.
+- S4: Fur look = toon ramp + warm rim light + a dithered fresnel "fuzz" on the silhouette (custom onBeforeCompile on the shared fur material). Outline is 60% of the old width.
+- S4: Cats gallop with a rotary footfall and spine flexion; dogs use a transverse gallop with a stiffer spine, a springier bounce for terriers and Shibas, flapping long ears and Duke's bouncing jowls.
+- S4: Pupils are bones: slits in daylight, round at dusk and night (Home follows the clock), wide during Catnip.
+- S4: No kitten exists in the roster; a `KITTEN_MORPH` preset is ready for one. Professor Mittens gets fluffier cheeks, Sushi is slimmer.
+- S4: New breeds (Shiba "Kenta", Akita "Haru", Georgian Shepherd "Gela", ear-tagged street dog "Lali") live in `BREEDS` in data/dogs.ts for S5/S6.
+- S4: Bodies polygonise in about 0.2 to 0.4 s per new skin or breed and are cached; rebuilds with the same skin are instant.
+- S5: Districts are now real: `CityDef.districts` gives each 1000 m zone its own palette (sky, fog, light, road), night music, road bend and ambient particles; kits get `ctx.district` to lay out different props; patterns can be limited to districts. `?district=N` starts runs in a district for testing.
+- S5: New generic hazard behaviours: `rolls` (moves along the track: robots, trains, barrels), `warn` (one-shot warning sound: crossing chime, railway bell, crow caw, horn, steam, rumble) and `sideX` (off-road side track, never mirrored). Crows reuse `drops` with an overhead body (slide under).
+- S5: City extras are data: hunt words, ambience, alley theme name and colour, a power-up variant, an outfit set bonus, a loading card SVG and a postcard comic SVG. City collection sets add a bonus only in their city.
+- S5: Signage uses tiny Google Fonts subsets (`text=` with only the glyphs used) of Noto Sans JP and Noto Sans Georgian (OFL), drawn into one atlas texture per city and redrawn when the font loads.
+- S5: Tokyo unlocks at 6000 m best, 45,000 coins or 80 Fish Bones (Paris and Berlin are not built, so the chain skips them). Shitamachi's right side is a railway embankment so the side-track train never clips houses.
+- S5: Tokyo pups: the Akita lunges (and shoves 1.5x further), the Shiba runs the Pack Rush with side-step feints. Bento Box = Yarn Magnet plus 3 loot items dropped ahead. Cat Door opens into the "Cat Cafe".
+- S5: Shop and neon names are invented Japanese words (ramen, karaoke, kissa, izakaya, books...), no brands; the lattice tower is generic, not a landmark replica.
+- S5: Postcard fragments count per city when a run ends; the 5th unlocks the city's comic panel (the fragment still sells).
+- S6: Tbilisi unlocks at 8000 m best, 60,000 coins or 110 Fish Bones. Signs use real Mkhedruli words (bread, wine, pharmacy, hello, khinkali, churchkhela, bath, supra, cafe, Tbilisi), rendered with a Noto Sans Georgian subset.
+- S6: Street Pals: from 350 m, a roll every 600 to 1100 m (70%) sends two ear-tagged street dogs to trot beside Miso; Duke's pack is held 60% further back for 5 s and no Pack Rush starts meanwhile. Pure logic in `gameplay/StreetPals.ts`, tested.
+- S6: The cable car gondola is a Fish Rocket variant ("Cable Car") placed by a new `power` pattern entry in Abanotubani; PowerFx swaps the rocket for a gondola on its cable in cities with that variant. Cities can now have several power-up variants (Supra Feast = Catnip with a toast).
+- S6: Old Town slopes are a steeper curved-world down bend (`curveDown` per district) with barrels rolling toward you; the Bridge of Peace district bends the road sideways (`curveSide`) under a steel-and-glass canopy.
+- S6: Both Tbilisi pups are Nagazi (slow, big, they block a lane on the Pack Rush); the tagged street dogs are allies, never chasers.
+- S6: Seasonal events live in data/events.ts. Tbilisoba (20 to 31 October): grape garlands and flags across Tbilisi streets and a 100% chance of a second loot item on every loot slot. `?festival=1` forces it.
+- S6: Fixed a Tone.js "start time" error during the home-to-run crossfade (the lo-fi layer and the run groove both hit the bass on beat one).
+- S7: The autoplay bot reads obstacles by closing speed (moving hazards included) with per-skill reaction, look-ahead and mistake rates in data/autoplay.ts; the simulator runs the real RunSession headless.
+- S7: Weaving traffic (Vespa, mamachari) and Tbilisi side tosses now stumble instead of killing; a hazard you cannot see coming should cost a stumble, not the run.
+- S7: Spawner avoids the last 8 patterns (weight x0.12) rather than banning them, so small libraries still work.
+- S7: Upgrade ladder flattened to 500/1500/3500/7500/15000 so a casual player maxes one upgrade in about 80 runs.
+- S7: PNG icons (180, 512) added because iOS ignores SVG touch icons.

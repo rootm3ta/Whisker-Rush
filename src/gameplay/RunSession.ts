@@ -23,6 +23,12 @@ import { ScoreKeeper } from './ScoreKeeper';
 import { rollLootAtLeast, Secrets } from './Secrets';
 import { Spawner } from './Spawner';
 import { Hazards } from './Hazards';
+import { StreetPals } from './StreetPals';
+import { STREET_PALS } from '../data/streetPals';
+import { rollLootItem } from './Spawner';
+import { LANES } from '../data/runner';
+import { LOOT, LOOT_ITEMS } from '../data/pickups';
+import { OBSTACLES } from '../data/obstacles';
 import { CITIES } from '../data/cities';
 import type { Rarity } from '../data/pickups';
 import { Rng } from '../core/Rng';
@@ -46,6 +52,7 @@ export class RunSession {
   readonly secrets: Secrets;
   readonly boss: Boss;
   readonly hazards = new Hazards();
+  readonly pals = new StreetPals();
   /** True when the last crash was a catch (second stumble), false for a head-on crash. */
   caught = false;
   readonly stats: RunStatsCollector;
@@ -58,6 +65,7 @@ export class RunSession {
   private readonly rng = new Rng(555);
 
   constructor(private readonly bus: EventBus<GameEvents>) {
+    this.hazards.bus = bus;
     this.runner = new Runner(bus, this.field);
     this.collision = new Collision(bus, this.field, this.satchel, this.mods);
     this.keeper = new ScoreKeeper(bus, this.score);
@@ -88,6 +96,7 @@ export class RunSession {
   reset(seed?: number, profile: Profile | null = null, now = Date.now(), config: RunConfig = defaultRunConfig()): void {
     this.config = config;
     this.spawner.setCity(config.city);
+    this.pals.reset(!!CITIES[config.city].streetPals);
     this.boss.throwIds = CITIES[config.city].boss.throwIds;
     this.runner.reset();
     this.runner.configure(config.laneSwitchSec, config.jumpHeight, config.coyoteSec, config.maxKicks);
@@ -200,6 +209,57 @@ export class RunSession {
     }
   };
 
+  /** City power-up variants (Bento Box): drop loot items into the lanes ahead. */
+  dropLootAhead(n: number): void {
+    const r = this.runner;
+    for (let k = 0; k < n; k++) {
+      const item = rollLootItem(this.rng, r.distance, this.config.luck, this.config.city);
+      this.field.addPickup(PickupKind.Loot, item, ((k % 3) - 1) * LANES.width, r.distance + 18 + k * 7, LOOT.y);
+    }
+  }
+
+  // ---- Debug forcing (debug menu only) ----------------------------------------------------
+
+  /** Puts an obstacle `ahead` metres in front of the cat in a lane (-1..1, or a side track). */
+  debugObstacle(id: string, lane = 0, ahead = 45): void {
+    const def = OBSTACLES[id];
+    if (!def) return;
+    const tints = def.tints;
+    this.field.addObstacle(id, lane * LANES.width, this.runner.distance + ahead, def.length, tints ? tints[0] : 0xffffff);
+  }
+
+  debugLoot(item: string): void {
+    const i = LOOT_ITEMS.findIndex((l) => l.id === item);
+    if (i >= 0) this.field.addPickup(PickupKind.Loot, i, 0, this.runner.distance + 25, LOOT.y);
+  }
+
+  debugBell(): void {
+    const id = this.secrets.nextBell();
+    if (id >= 0) {
+      this.secrets.markBellSpawned(id);
+      this.field.addPickup(PickupKind.Bell, id, 0, this.runner.distance + 25, 1.2);
+    }
+  }
+
+  debugBoss(): void {
+    this.boss.forceSoon(this.runner.distance);
+  }
+
+  debugRush(): void {
+    this.chase.startRush(6, this.runner.lane);
+  }
+
+  debugPals(): void {
+    this.pals.arrive();
+    this.chase.palDelay(STREET_PALS.delaySec);
+    this.bus.emit('streetPal', 0);
+  }
+
+  debugAlley(): void {
+    this.bus.emit('catDoor', 0);
+    this.secrets.enterAlley(this.runner, this.field);
+  }
+
   step(dt: number): void {
     if (this.collision.crashed) return;
     const r = this.runner;
@@ -224,6 +284,10 @@ export class RunSession {
     r.step(dt);
     this.collision.step(r, dt);
     if (r.grinding) this.stats.grindMeters += r.distance - r.prevDistance;
+    if (this.pals.step(dt, r.distance)) {
+      this.chase.palDelay(STREET_PALS.delaySec);
+      this.bus.emit('streetPal', 0);
+    }
     if (!this.collision.crashed) this.chase.step(dt, r);
     this.keeper.update(dt, r.distance - r.prevDistance);
     const loaf = this.secrets.stepLoaf(dt);

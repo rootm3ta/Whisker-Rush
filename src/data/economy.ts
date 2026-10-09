@@ -9,10 +9,10 @@ export type UpgradeId =
   | `power:${Exclude<PowerUpId, 'zoomies' | 'fishRocket' | 'bubble'>}`;
 
 /** Shared cost ladder for 5-level upgrades. */
-export const COST_LADDER = [500, 1500, 4000, 10000, 25000] as const;
+export const COST_LADDER = [500, 1500, 3500, 7500, 15000] as const;
 
 export const SATCHEL_LEVELS = [12, 18, 24, 30, 36, 44, 52, 60] as const;
-export const SATCHEL_COSTS = [400, 1000, 2500, 5000, 9000, 15000, 24000] as const;
+export const SATCHEL_COSTS = [400, 900, 2000, 4000, 7000, 11000, 16000] as const;
 
 export interface UpgradeDef {
   name: string;
@@ -97,6 +97,9 @@ export const SETS = [
   { id: 'toyBox', name: 'Toy Box', items: ['toyMouse', 'feather', 'goldenMouse'], reward: { kind: 'accessory', id: 'crown' } },
   { id: 'fancyThings', name: 'Fancy Things', items: ['shinySpoon', 'silverBell', 'lostEarring', 'grandmasBrooch'], reward: { kind: 'cat', id: 'mittens' } },
   { id: 'dukesStuff', name: "Duke's Stuff", items: ['dukesSunglasses', 'postcardFragment', 'vintageStamp'], reward: { kind: 'accessory', id: 'aviators' } },
+  // City sets: their bonus applies only in that city.
+  { id: 'shrineVisit', name: 'Shrine Visit', items: ['omamori', 'emaPlaque', 'templeBell', 'fortuneSlip'], reward: { kind: 'accessory', id: 'headphones' }, city: 'tokyo', cityBonus: 0.03 },
+  { id: 'supraTable', name: 'Supra Table', items: ['khinkali', 'hornCup', 'tonisPuri', 'qvevriShard'], reward: { kind: 'accessory', id: 'hornCharm' }, city: 'tbilisi', cityBonus: 0.03 },
 ] as const;
 
 export const SET_COIN_BONUS = 0.02;

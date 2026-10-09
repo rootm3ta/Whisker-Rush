@@ -1,3 +1,4 @@
+import { CITIES, type CityId } from '../data/cities';
 import { Rng } from '../core/Rng';
 import { CAT_PASSIVES } from '../data/cats';
 import { CONSUMABLES, SETS, SET_COIN_BONUS, STASH, type Reward } from '../data/economy';
@@ -82,8 +83,19 @@ export function tradeSet(p: Profile, setId: string, rng: Rng): string[] | null {
   return grant(p, r, rng);
 }
 
-export function setCoinBonus(p: Profile): number {
-  return 1 + p.sets.length * SET_COIN_BONUS;
+/** +2% per traded set everywhere, plus each city set's bonus while running in its city. */
+export function setCoinBonus(p: Profile, city?: string): number {
+  let b = 1 + p.sets.length * SET_COIN_BONUS;
+  for (const s of SETS) if ('city' in s && s.city === city && p.sets.includes(s.id)) b += s.cityBonus;
+  return b;
+}
+
+/** Outfit set bonus: wearing every piece of a city's set while running there. */
+export function outfitSetBonus(p: Profile, city: string): number {
+  const set = CITIES[city as CityId]?.outfitSet;
+  if (!set) return 1;
+  const worn = Object.values(p.outfit);
+  return set.pieces.every((id) => worn.includes(id)) ? 1 + set.bonus : 1;
 }
 
 /** Buys a Secret Stock entry once per bucket. */

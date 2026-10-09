@@ -36,7 +36,9 @@ import { MissionsScreen } from '../ui/screens/MissionsScreen';
 import { CalendarScreen } from '../ui/screens/CalendarScreen';
 import { PassScreen } from '../ui/screens/PassScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
-import type { HomeAction } from '../data/home';
+import { HomeTour } from '../ui/HomeTour';
+import { DebugMenu } from '../ui/DebugMenu';
+import { HOME, WINDOW, timeOfDay, type HomeAction, type TimeOfDay, type WindowEvent } from '../data/home';
 import { PASS } from '../data/economy';
 import { computeRunConfig } from '../meta/Loadout';
 import { applyStats, missionText, type RunStats } from '../meta/Missions';
@@ -72,6 +74,15 @@ import { KITS } from '../procgen/cityKits';
 import { MapScreen } from '../ui/screens/MapScreen';
 import type { CityId } from '../data/cities';
 import { Track } from '../world/Track';
+import { CityCard } from '../ui/CityCard';
+import { curveUniforms } from '../render/ToonMaterial';
+import { LOOT_ITEMS } from '../data/pickups';
+import { OBSTACLES } from '../data/obstacles';
+import { activeEvent } from '../data/events';
+import { Autopilot } from '../gameplay/Autopilot';
+import { BOT_SKILLS, type BotSkillId } from '../data/autoplay';
+import { screenUniforms } from '../procgen/signs';
+import type { BasePalette } from '../data/cities';
 import { EventBus } from './EventBus';
 import type { GameEvents } from './events';
 import { Action, Input } from './Input';
@@ -93,6 +104,15 @@ export class Game {
   private track: Track;
   private readonly env: Environment;
   private city: CityId = 'mapleLane';
+  /** Current district of the city (-1 before a run starts). */
+  private district = -1;
+  private districtParticles: string | undefined;
+  /** Debug: start runs in district N (`?district=N`, debug builds and headless checks). */
+  private readonly debugDistrict = Number(new URLSearchParams(location.search).get('district') ?? 0) || 0;
+  private petalT = 0;
+  /** Seasonal festival running in this city (announced at run start). */
+  private festival = '';
+  private readonly cityCard: CityCard;
   private readonly map: MapScreen;
   private readonly fieldView = new FieldView();
   private readonly cat: Cat;
@@ -121,6 +141,13 @@ export class Game {
   private readonly metaRng = new Rng((Date.now() ^ 0x5bd1e995) >>> 0);
   private readonly labelPos = new THREE.Vector3();
   private pokes = 0;
+  private readonly tour: HomeTour;
+  private readonly debug: DebugMenu;
+  private homeTime = 0;
+  /** Playtest bot (`?autoplay=1` or `?autoplay=expert`, or the debug menu). */
+  private autopilot: Autopilot | null = null;
+  /** RUN paw rect for the tour spotlight (measured once per tour). */
+  private pawRect: DOMRect | null = null;
   private readonly comic: Comic;
   private readonly tutorial: Tutorial;
   private readonly tutorialHud: TutorialHud;
@@ -209,7 +236,36 @@ export class Game {
       settings: () => this.screens.settings.open(),
       shop: () => this.shop.open(),
       pass: () => this.screens.pass.open(),
+      open: (a) => this.openHomeAction(a),
     });
+    this.tour = new HomeTour(host);
+    this.home.windowView.onCue = (c) => {
+      this.home.cue(c);
+      this.audio.play(c);
+    };
+    this.debug = new DebugMenu(host);
+    for (const ev of Object.keys(WINDOW.events) as WindowEvent[]) this.debug.add('Ambient events', ev, () => this.home.windowView.play(ev));
+    for (const tod of Object.keys(WINDOW.times) as TimeOfDay[]) this.debug.add('Time of day', tod, () => this.home.setTime(tod));
+    this.debug.add('Home', 'Replay tour', () => this.replayTour());
+    const auto = new URLSearchParams(location.search).get('autoplay');
+    if (auto) this.autopilot = new Autopilot(auto in BOT_SKILLS ? (auto as BotSkillId) : 'casual');
+    for (const s of Object.keys(BOT_SKILLS) as BotSkillId[]) this.debug.add('Autoplay', s, () => (this.autopilot = new Autopilot(s)));
+    this.debug.add('Autoplay', 'off', () => (this.autopilot = null));
+    // Per city: force every hazard, the boss, the Pack Rush, secrets, loot and districts.
+    for (const c of Object.values(CITIES)) {
+      const sec = `${c.name} (start a run there first)`;
+      for (const id of Object.keys(c.obstacles)) this.debug.add(sec, id, () => this.run.debugObstacle(id, OBSTACLES[id].rolls && OBSTACLES[id].rolls! < -10 ? 2.4 : 0));
+      this.debug.add(sec, 'BOSS', () => this.run.debugBoss());
+      this.debug.add(sec, 'PACK RUSH', () => this.run.debugRush());
+      this.debug.add(sec, 'CAT DOOR', () => this.run.debugAlley());
+      this.debug.add(sec, 'BELL', () => this.run.debugBell());
+      for (const v of c.powerVariants ?? []) this.debug.add(sec, v.name, () => this.run.activatePowerUp(v.of));
+      if (c.streetPals) this.debug.add(sec, 'STREET PALS', () => this.run.debugPals());
+      for (const l of c.loot) this.debug.add(sec, `loot:${l.id}`, () => this.run.debugLoot(l.id));
+      (c.districts ?? []).forEach((d, i) => this.debug.add(sec, `district:${d.name}`, () => this.applyDistrict(i, true)));
+      if (c.postcard) this.debug.add(sec, 'postcard comic', () => this.cityCard.postcard(c.id));
+      if (c.card) this.debug.add(sec, 'travel card', () => this.cityCard.travel(c.id));
+    }
     const ctx: MetaCtx = {
       save: this.save,
       rng: this.metaRng,
@@ -223,11 +279,18 @@ export class Game {
       adsLeft: (placement) => rewardedLeft(this.save.profile, placement, Date.now()),
       openShop: () => this.shop.open(),
       openOdds: () => this.odds.open(),
+      openPass: () => this.screens.pass.open(),
+      buy: (id) => this.shop.buy(id),
+      haptic: (k) => (k === 'tick' ? this.haptics.tick() : k === 'success' ? this.haptics.medium() : this.haptics.heavy()),
     };
     this.market = new MarketScreen(ctx);
     this.shop = new ShopScreen(ctx, this.iap);
     this.odds = new OddsScreen(ctx);
-    this.map = new MapScreen(ctx, () => this.prepareRun());
+    this.cityCard = new CityCard(host);
+    this.map = new MapScreen(ctx, () => {
+      this.prepareRun();
+      this.cityCard.travel(this.city);
+    });
     this.screens = {
       upgrades: new UpgradesScreen(ctx),
       wardrobe: new WardrobeScreen(ctx, (on) => {
@@ -244,6 +307,8 @@ export class Game {
           this.fsm.go('boot');
         },
         () => this.playIntro(true),
+        this.audio,
+        () => this.replayTour(),
       ),
     };
     this.comic = new Comic(host);
@@ -303,12 +368,16 @@ export class Game {
             this.refreshMeta();
             const hat = freeHatPending(this.save.profile);
             this.homeHud.setHighlight(hat ? 'wardrobe' : null, hat ? 'Free hat!' : '');
+            this.homeTime = 0;
+            this.home.setTime(this.localTimeOfDay());
             void this.startMonetization();
           },
           update: () => this.input.buffer.process(this.simTime, this.startFromHome),
           exit: () => {
             this.homeHud.visible = false;
             this.home.previewOn = false;
+            this.home.settleMiso();
+            this.tour.finish();
           },
         },
         run: {
@@ -319,12 +388,17 @@ export class Game {
             this.powerHud.visible = true;
             if (this.freshRun) {
               this.freshRun = false;
+              if (this.festival) this.hud.stamp(`${this.festival}: double loot!`, STAMP_COLORS.loot);
               const inv = this.save.profile.inventory;
               this.powerHud.showBoosts(inv.zoomies, inv.fishRocket, POWERUP_FX.boostWindowSec, this.adHeadStartOk());
             }
           },
           update: (dt) => {
             this.input.buffer.process(this.simTime, this.handleRunAction);
+            if (this.autopilot) {
+              const a = this.autopilot.decide(this.run, dt);
+              if (a >= 0) this.run.handleAction(a);
+            }
             this.run.step(dt);
             this.track.step(this.run.runner.distance);
             if (this.tutorial.active) this.updateTutorial(dt);
@@ -400,7 +474,13 @@ export class Game {
     const p = this.save.profile;
     const config = computeRunConfig(p);
     this.setCity(config.city);
+    this.district = -1;
+    this.applyDistrict(this.debugDistrict % (CITIES[this.city].districts?.length ?? 1), false);
     this.run.reset(undefined, p, Date.now(), config);
+    const fest = activeEvent(this.city, new Date(), new URLSearchParams(location.search).has('festival'));
+    this.run.spawner.lootMul = fest?.lootMul ?? 1;
+    this.festival = fest?.name ?? '';
+    this.track.setFestival(!!fest);
     this.track.reset();
     this.input.buffer.clear();
     this.hud.reset();
@@ -469,7 +549,11 @@ export class Game {
       this.rig.addShake(impact * CAMERA.landShake);
       if (impact > CAMERA.landKick * 4) this.rig.addKick(CAMERA.landKick);
     });
-    b.on('zoneChange', () => this.rig.addKick(CAMERA.landKick));
+    b.on('zoneChange', (zone) => {
+      this.rig.addKick(CAMERA.landKick);
+      const n = CITIES[this.city].districts?.length ?? 0;
+      if (n > 0) this.applyDistrict((zone + this.debugDistrict) % n, true);
+    });
     b.on('nearMiss', () => {
       this.slowLeft = REFLEX.durationSec;
       this.hud.stamp(UI_TEXT.nearMiss, STAMP_COLORS.nearMiss);
@@ -523,7 +607,13 @@ export class Game {
     });
     b.on('packRushEnd', () => this.hud.setRush(false));
     const stamp = (t: string, c: string = STAMP_COLORS.stunt) => this.hud.stamp(t, c);
-    b.on('powerStart', (i) => stamp(POWERUPS[POWERUP_IDS[i]].name.toUpperCase() + '!', STAMP_COLORS.loot));
+    b.on('powerStart', (i) => {
+      const id = POWERUP_IDS[i];
+      const variant = this.fsm.is('run') ? (CITIES[this.city].powerVariants?.find((v) => v.of === id) ?? null) : null;
+      stamp((variant ? variant.name : POWERUPS[id].name).toUpperCase() + '!', STAMP_COLORS.loot);
+      if (variant?.bonusLoot) this.run.dropLootAhead(variant.bonusLoot);
+      if (variant?.sfx) this.audio.play(variant.sfx);
+    });
     b.on('shieldPop', (k) => {
       stamp(k === 0 ? UI_TEXT.pop : UI_TEXT.roombaOff, STAMP_COLORS.warn);
       this.rig.addShake(0.15);
@@ -543,7 +633,7 @@ export class Game {
     b.on('mysteryFish', () => stamp(UI_TEXT.mystery, STAMP_COLORS.loot));
     b.on('gag', (g) => stamp(UI_TEXT.gags[g], STAMP_COLORS.warn));
     b.on('catDoor', () => {
-      stamp(UI_TEXT.catDoor, STAMP_COLORS.loot);
+      stamp(CITIES[this.city].alley?.name ?? UI_TEXT.catDoor, STAMP_COLORS.loot);
       this.setAlleyLook(true);
     });
     b.on('alleyEnd', () => this.setAlleyLook(false));
@@ -553,6 +643,10 @@ export class Game {
       this.rig.addShake(0.25);
     });
     b.on('chest', () => stamp(UI_TEXT.chest, STAMP_COLORS.loot));
+    b.on('streetPal', () => {
+      stamp('STREET PALS!', STAMP_COLORS.loot);
+      this.audio.play('bark');
+    });
   }
 
   /** Secret Alley: dusky violet fog and sky while inside. */
@@ -561,8 +655,43 @@ export class Game {
       this.env.fog.color.copy(this.alleyColor);
       this.scene.background = this.alleyColor;
     } else {
-      this.env.setPalette(CITIES[this.city].palette);
+      this.env.setPalette(this.districtPalette());
     }
+  }
+
+  /** The city palette with the current district's overrides. */
+  private districtPalette(): BasePalette {
+    const c = CITIES[this.city];
+    const d = c.districts?.[Math.max(0, this.district)];
+    return d?.palette ? { ...c.palette, ...d.palette } : c.palette;
+  }
+
+  /** Ambient district particles: falling sakura petals, ramen steam, autumn leaves. */
+  private districtFx(dt: number, dist: number): void {
+    this.petalT -= dt;
+    if (this.petalT > 0) return;
+    this.petalT = 0.06;
+    const k = this.districtParticles;
+    const P = this.juice.particles;
+    const rx = (Math.random() - 0.5) * 16;
+    const z = dist + 10 + Math.random() * 45;
+    if (k === 'petals') P.spawn(rx, 5 + Math.random() * 3, z, 0.6 + Math.random(), -0.9, 0, 4, 0.16, 0.08, 3, Math.random() < 0.5 ? 0xf7c6d9 : 0xfbe3ec, true);
+    else if (k === 'leaves') P.spawn(rx, 4 + Math.random() * 2, z, 1.2, -0.8, 0, 4, 0.18, 0.1, 3, Math.random() < 0.5 ? 0xd98a3a : 0xc8682a, true);
+    else if (k === 'steam' && Math.random() < 0.4) P.spawn((Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 2), 1.2, z, 0, 0.8, 0, 2.2, 0.6, -0.05, 0, 0xf3eee6, true);
+  }
+
+  /** Switches to a district: sky, fog and light, night music, road bend, ambient particles. */
+  private applyDistrict(i: number, announce: boolean): void {
+    if (i === this.district) return;
+    this.district = i;
+    const c = CITIES[this.city];
+    const d = c.districts?.[i];
+    this.env.setPalette(this.districtPalette());
+    this.audio.setNight(!!d?.night);
+    curveUniforms.uCurveSide.value = RENDER.curveSide * (d?.curveSide ?? 1);
+    curveUniforms.uCurveDown.value = RENDER.curveDown * (d?.curveDown ?? 1);
+    this.districtParticles = d?.particles;
+    if (announce && d) this.hud.stamp(d.name, STAMP_COLORS.stunt);
   }
 
   /**
@@ -575,7 +704,10 @@ export class Game {
     const c = CITIES[id];
     this.scene.remove(this.track.root);
     this.track.dispose();
-    this.track = new Track(KITS[id]);
+    this.track = new Track(KITS[id], c.districts?.length ?? 1, this.debugDistrict);
+    this.audio.setAmbience(c.ambience);
+    this.powerFx.cableCar = !!c.powerVariants?.some((v) => v.of === 'fishRocket');
+    this.alleyColor.setHex(c.alley?.fog ?? CAT_DOOR.fog);
     this.scene.add(this.track.root);
     this.env.setPalette(c.palette);
     this.pack.setPups(c.dogs.pups[0], c.dogs.rush);
@@ -752,6 +884,12 @@ export class Game {
     const loot: number[] = [];
     for (let i = 0; i < run.satchel.count; i++) loot.push(run.satchel.at(i));
     const overflow = addToStash(p, loot);
+    // Postcard fragments: five complete a city's postcard comic.
+    const pcId = `postcard${this.city[0].toUpperCase()}${this.city.slice(1)}`;
+    const before = p.postcards[this.city] ?? 0;
+    const found = loot.filter((i) => LOOT_ITEMS[i].id === pcId).length;
+    if (found) p.postcards[this.city] = before + found;
+    const postcardDone = before < 5 && before + found >= 5 && !!CITIES[this.city].postcard;
     p.revives += run.revives.total;
     this.applyMetaStats(run.stats.snapshot(distance, run.score.coins));
     fillTipJar(p, distance);
@@ -770,6 +908,7 @@ export class Game {
     this.save.write();
     this.fsm.go('home');
     if (overflow > 0) popup(this.host, 'Stash full', [`Tom bought the overflow for ${overflow} coins.`]);
+    if (postcardDone) this.cityCard.postcard(this.city);
     // First run: Old Tom introduces himself and pays a newcomer bonus. Later: only with loot.
     if (newcomer || loot.length > 0) this.market.open(newcomer);
   }
@@ -823,7 +962,25 @@ export class Game {
     this.openHomeAction(hit as HomeAction | 'miso', e.clientX, e.clientY);
   };
 
+  /** Local clock, or ?tod=night etc. for testing. */
+  private localTimeOfDay(): TimeOfDay {
+    const q = new URLSearchParams(location.search).get('tod') as TimeOfDay | null;
+    return q && q in WINDOW.times ? q : timeOfDay(new Date().getHours());
+  }
+
+  private replayTour(): void {
+    this.save.profile.flags.homeTourDone = false;
+    this.save.write();
+    this.homeTime = 0;
+  }
+
   private openHomeAction(a: HomeAction | 'miso', x = 0, y = 0): void {
+    if (this.tour.active) return;
+    if (a !== 'miso') {
+      this.home.press(a);
+      this.haptics.tick();
+      this.audio.play('pop');
+    }
     switch (a) {
       case 'run':
         this.startRun();
@@ -915,11 +1072,41 @@ export class Game {
     this.market.update();
     const w = this.host.clientWidth;
     const hh = this.host.clientHeight;
-    const sheet = this.anySheetOpen();
+    // The tour counts as an overlay but should not hide the room UI it points at.
+    const sheet = overlays.open - (this.tour.active ? 1 : 0) > 0;
     this.homeHud.setCovered(sheet);
     for (const a of h.anchors) {
       const v = this.labelPos.copy(a.pos).project(h.camera);
-      this.homeHud.placeLabel(a.action, ((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, !sheet && v.z < 1);
+      this.homeHud.placeLabel(a.action, ((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, !sheet && !h.previewOn && v.z < 1);
+    }
+    const W = WINDOW.hole;
+    const p0 = this.labelPos.set(W.x - W.w / 2, W.y + W.h / 2, -2.9).project(h.camera);
+    const x0 = ((p0.x + 1) / 2) * w;
+    const y0 = ((1 - p0.y) / 2) * hh;
+    const p1 = this.labelPos.set(W.x + W.w / 2, W.y - W.h / 2, -2.9).project(h.camera);
+    this.homeHud.setWindowRect(x0, y0, ((p1.x + 1) / 2) * w - x0, ((1 - p1.y) / 2) * hh - y0);
+    this.homeHud.flushLabels(w, hh);
+    for (const a of HOME.hotspotOrder) h.setAttention(a, this.homeHud.hasNews(a));
+    this.homeTime += frameDt;
+    if (!this.save.profile.flags.homeTourDone && !this.tour.active && !sheet && this.homeTime > 1.2 && this.fsm.is('home')) {
+      this.pawRect = null;
+      this.tour.start(() => {
+        this.save.profile.flags.homeTourDone = true;
+        this.save.write();
+      });
+    }
+    const ta = this.tour.action;
+    if (ta === 'run') {
+      // The door hides behind the fridge from this angle: spotlight the RUN paw instead.
+      if (!this.pawRect) this.pawRect = this.host.querySelector('.wr-runpaw')!.getBoundingClientRect();
+      const r = this.pawRect;
+      this.tour.place(r.left + r.width / 2, r.top + r.height / 2, r.width / 2 + 10, w, hh);
+    } else if (ta) {
+      const c = h.hotspotCenter(ta, this.labelPos);
+      const dist = h.camera.position.distanceTo(c);
+      const v = c.project(h.camera);
+      const px = hh / (2 * Math.tan((h.camera.fov * Math.PI) / 360) * dist);
+      this.tour.place(((v.x + 1) / 2) * w, ((1 - v.y) / 2) * hh, Math.max(44, HOME.hotspot.halo[ta] * 0.42 * px), w, hh);
     }
     const seat = h.cat.holder.position;
     this.homeTrail.update(frameDt, 0, 0, h.previewOn ? 2 : 0, h.previewOn);
@@ -930,6 +1117,7 @@ export class Game {
   }
 
   private readonly render = (alpha: number, frameDt: number): void => {
+    screenUniforms.uTime.value += frameDt;
     if (this.fsm.is('home')) {
       this.renderHome(frameDt);
       return;
@@ -1008,6 +1196,7 @@ export class Game {
     }
 
     const mode = !afterCrash ? PackMode.Run : this.popped ? PackMode.Gloat : PackMode.Pounce;
+    this.pack.updatePals(frozen ? 0 : frameDt, run.pals.left, x, running ? r.speed : 0);
     if (frozen) this.pack.update(0, run.chase, x, r.speed, mode);
     else this.pack.update(frameDt, run.chase, x, running ? r.speed : 0, mode);
     this.fx.update(frozen ? 0 : frameDt, x, d.y);
@@ -1015,6 +1204,7 @@ export class Game {
     this.rig.update(afterCrash ? frameDt : dt, x, d.y, running ? r.speed : 0, r.flying && !afterCrash);
     if (running || crashing) this.hud.update(run.score, run.satchel, frameDt * 1000);
     this.trail.update(dt, x, d.y + d.lift, r.speed, running && !d.boxed);
+    if (running && this.districtParticles) this.districtFx(frameDt, dist);
     this.juice.update(frozen ? 0 : afterCrash ? frameDt : dt, {
       x,
       y: d.y,

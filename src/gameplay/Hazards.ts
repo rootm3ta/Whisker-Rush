@@ -3,16 +3,32 @@ import { LANES } from '../data/runner';
 import { Rng } from '../core/Rng';
 import type { Field } from './Field';
 import type { Runner } from './Runner';
+import type { EventBus } from '../core/EventBus';
+import type { GameEvents } from '../core/events';
+import { WARN_SOUNDS } from '../data/obstacles';
 
-/** City hazards with behaviour: weaving scooters and laundry that drops into the lane. */
+/**
+ * City hazards with behaviour: weaving scooters, laundry and crows that drop into the lane,
+ * things that roll along the track (robots, barrels, trains) and warning sounds.
+ */
 export class Hazards {
   private readonly rng = new Rng(77);
+  bus: EventBus<GameEvents> | null = null;
 
   step(dt: number, r: Runner, field: Field): void {
     const obs = field.obstacles;
     for (let i = 0; i < obs.length; i++) {
       const o = obs[i];
       if (!o.active) continue;
+      if (o.def.warn && !o.warned && o.s0 - r.distance < r.speed * H.warnSec) {
+        o.warned = true;
+        this.bus?.emit('hazardWarn', WARN_SOUNDS.indexOf(o.def.warn));
+      }
+      if (o.def.rolls) {
+        const move = o.def.rolls * dt;
+        o.s0 += move;
+        o.s1 += move;
+      }
       if (o.def.weaves) {
         const move = H.weave.speed * dt;
         o.s0 += move;

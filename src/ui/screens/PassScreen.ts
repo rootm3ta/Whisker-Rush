@@ -37,7 +37,8 @@ export class PassScreen {
     const tier = passTier(p.pass.stamps);
     const into = p.pass.stamps % PASS.stampsPerTier;
     let html = `<p class="wr-note"><b>${esc(PASS.season)}</b> · Tier ${tier}/${PASS.tiers} · ${into}/${PASS.stampsPerTier} stamps to next. Earn stamps from runs, missions, challenges and logins.</p>`;
-    if (!p.pass.premium) html += `<button class="wr-btn wr-btn-main" data-act="premium">Get Premium: 300 Fish Bones back over the season</button>`;
+    if (!p.pass.premium)
+      html += `<div class="wr-go-row"><button class="wr-btn wr-btn-main" data-act="passPremium">Get Premium<br><small>300 Fish Bones back</small></button><button class="wr-btn" data-act="passPlus">Premium + 10 tiers</button></div>`;
     html += `<div class="wr-row"><b style="width:34px">Tier</b><div class="grow"><b>Free</b></div><b>&nbsp;</b><b style="width:92px;text-align:right">Premium</b></div>`;
     for (let t = 1; t <= PASS.tiers; t++) {
       const claimed = p.pass.claimed.includes(t);
@@ -53,8 +54,8 @@ export class PassScreen {
 
   private readonly onClick = (e: Event): void => {
     const t = (e.target as HTMLElement).closest('button');
-    if (t?.dataset.act === 'premium') {
-      this.ctx.openShop();
+    if (t?.dataset.act === 'passPremium' || t?.dataset.act === 'passPlus') {
+      void this.ctx.buy(t.dataset.act).then((ok) => ok && this.render());
       return;
     }
     if (t?.dataset.ptier) {

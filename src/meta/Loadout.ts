@@ -5,7 +5,7 @@ import type { PowerUpId } from '../data/powerups';
 import { RUNNER } from '../data/runner';
 import { WALL_KICK } from '../data/spawner';
 import { satchelCapacity, upgradeLevel } from './Economy';
-import { setCoinBonus } from './Market';
+import { setCoinBonus, outfitSetBonus } from './Market';
 import type { Profile } from './Save';
 
 /** Everything upgrades, sets and the chosen cat change about a run. */
@@ -58,7 +58,11 @@ export function computeRunConfig(p: Profile): RunConfig {
     jumpHeight: RUNNER.jumpHeight * (1 + UPGRADE_FX.jumpPerLevel * (spring - 1)),
     maxKicks: WALL_KICK.maxChain + (spring >= UPGRADES.pounceSpring.max ? 1 : 0),
     luck: 1 + UPGRADE_FX.luckyPerLevel * (lvl('luckyWhiskers') - 1),
-    coinMul: setCoinBonus(p) * (p.cat === 'biscuit' ? CAT_PASSIVES.biscuitCoinMul : 1) * (p.iap.coinDoubler ? 2 : 1),
+    coinMul:
+      setCoinBonus(p, p.flags.firstRunDone ? p.city : 'mapleLane') *
+      outfitSetBonus(p, p.flags.firstRunDone ? p.city : 'mapleLane') *
+      (p.cat === 'biscuit' ? CAT_PASSIVES.biscuitCoinMul : 1) *
+      (p.iap.coinDoubler ? 2 : 1),
     catDoorMul: p.cat === 'noir' ? CAT_PASSIVES.noirCatDoorMul : 1,
     napBonusSec: p.cat === 'sushi' ? CAT_PASSIVES.sushiNapBonusSec : 0,
     startBubble: p.cat === 'pixel',

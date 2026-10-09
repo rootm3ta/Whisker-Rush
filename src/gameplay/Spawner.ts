@@ -1,5 +1,5 @@
 import { Rng } from '../core/Rng';
-import { LANES } from '../data/runner';
+import { LANES, ZONE } from '../data/runner';
 import { LOOT, LOOT_ITEMS, RARITIES, RARITY_DISTANCE_BONUS, SOCK_ITEM, COIN, type Rarity } from '../data/pickups';
 import { OBSTACLES } from '../data/obstacles';
 import type { Pattern } from '../data/patterns';
@@ -76,15 +76,24 @@ export class Spawner {
   /** While paused (Boss Chase, Secret Alley) no patterns are placed. */
   paused = false;
   hooks: SpawnHooks | null = null;
+  /** Playtest hook: every pattern placed (name, track position). */
+  onPlace: ((name: string, s: number) => void) | null = null;
   /** Lucky Whiskers multiplier for rare loot. */
   luck = 1;
   /** First run: every gap without a power-up gets a loot item. */
   gapLoot = false;
+  /** Festivals: chance of a second loot item next to each pattern loot slot (2 = always). */
+  lootMul = 1;
   /** Noir's passive: cat door patterns appear more often. */
   catDoorMul = 1;
-  private readonly weightOf = (p: Pattern): number => (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight);
+  /** Recently placed pattern names: they are much less likely to come back right away. */
+  private readonly recent: string[] = [];
+  private readonly weightOf = (p: Pattern): number =>
+    (p.name.startsWith('cat-door') ? p.weight * this.catDoorMul : p.weight) * (this.recent.includes(p.name) ? SPAWNER.recentWeight : 1);
   private nextS: number = SPAWNER.firstAt;
   private tiers: Pattern[][] = tiersOf(CITIES.mapleLane.patterns);
+  /** Per-district tier lists (district-only patterns join their district's list). */
+  private byDistrict: Pattern[][][] = [];
   city: CityId = 'mapleLane';
   private last: Pattern | null = null;
   private readonly rng = new Rng(SPAWNER.seed);
@@ -96,12 +105,25 @@ export class Spawner {
     this.nextS = SPAWNER.firstAt;
     this.last = null;
     this.paused = false;
+    this.recent.length = 0;
   }
 
   /** Switches the pattern library and loot set to a city. */
   setCity(city: CityId): void {
     this.city = city;
-    this.tiers = tiersOf(CITIES[city].patterns);
+    const c = CITIES[city];
+    this.tiers = tiersOf(c.patterns.filter((p) => !p.districts));
+    const n = c.districts?.length ?? 0;
+    this.byDistrict = [];
+    for (let d = 0; d < n; d++) this.byDistrict.push(tiersOf(c.patterns.filter((p) => !p.districts || p.districts.includes(d))));
+  }
+
+  /** Pattern list for a tier at track position `s` (district-aware). */
+  private listFor(tier: number, s: number): Pattern[] {
+    const n = this.byDistrict.length;
+    if (n === 0) return this.tiers[tier - 1];
+    const l = this.byDistrict[Math.floor(s / ZONE.lengthM) % n][tier - 1];
+    return l.length ? l : this.tiers[tier - 1];
   }
 
   /** Resume placing patterns from `s` onward. */
@@ -117,9 +139,12 @@ export class Spawner {
     }
     while (this.nextS < distance + SPAWNER.aheadM) {
       const tier = pickTier(this.nextS, this.rng);
-      const p = pickPattern(this.tiers[tier - 1], this.rng, this.last, this.weightOf);
+      const p = pickPattern(this.listFor(tier, this.nextS), this.rng, this.last, this.weightOf);
       this.place(p, this.nextS, this.rng.next() < SPAWNER.mirrorChance);
+      this.onPlace?.(p.name, this.nextS);
       this.last = p;
+      this.recent.push(p.name);
+      if (this.recent.length > SPAWNER.recentCount) this.recent.shift();
       const gap = Math.max(SPAWNER.minGapM, speed * SPAWNER.gapSec);
       this.placeGapExtras(this.nextS + p.length + gap / 2);
       this.nextS += p.length + gap;
@@ -153,9 +178,13 @@ export class Spawner {
       const s = s0 + e.z;
       switch (e.t) {
         case 'o': {
-          const tints = OBSTACLES[e.id].tints;
+          const def = OBSTACLES[e.id];
+          const tints = def.tints;
           const color = tints ? rng.pick(tints) : 0xffffff;
-          f.addObstacle(e.id, x, s, e.len ?? OBSTACLES[e.id].length, color);
+          // Side-track things keep their side (the kit builds the track there), even in mirrored patterns.
+          const ox = def.sideX !== undefined ? Math.sign(e.lane || 1) * def.sideX : x;
+          const ob = f.addObstacle(e.id, ox, s, e.len ?? def.length, color);
+          if (ob) ob.pattern = p.name;
           break;
         }
         case 'coins':
@@ -170,6 +199,7 @@ export class Spawner {
         case 'loot':
           if (rng.next() < LOOT.fishBoneChance) f.addPickup(PickupKind.FishBone, 0, x, s, e.y);
           else f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s, e.y);
+          if (rng.next() < this.lootMul - 1) f.addPickup(PickupKind.Loot, rollLootItem(rng, s, this.luck, this.city), x, s + 1.6, e.y);
           break;
         case 'bell': {
           const id = this.hooks?.nextBell() ?? -1;
@@ -179,6 +209,9 @@ export class Spawner {
           }
           break;
         }
+        case 'power':
+          f.addPickup(PickupKind.PowerUp, POWERUP_IDS.indexOf(e.id), x, s, e.y);
+          break;
         case 'line': {
           f.addObstacle('clothesline', x, s, e.len, 0xffffff);
           const top = OBSTACLES.clothesline.top ?? 0;

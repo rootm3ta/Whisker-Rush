@@ -338,6 +338,35 @@
 .wr-toggle.on::after {
   left: 26px;
 }
+.wr-wave {
+  width: 28px;
+  height: 20px;
+  margin-right: 10px;
+  flex: none;
+  fill: #2a201c;
+  opacity: 0.35;
+}
+.wr-wave rect {
+  transform-origin: center;
+  transform-box: fill-box;
+  transform: scaleY(0.3);
+}
+.wr-audio[data-s='playing'] .wr-wave {
+  fill: #3f8a5a;
+  opacity: 1;
+}
+.wr-audio[data-s='playing'] .wr-wave rect {
+  animation: wr-wave 0.7s ease-in-out infinite alternate;
+}
+.wr-audio[data-s='muted'] .wr-wave {
+  fill: #b5523b;
+  opacity: 0.8;
+}
+@keyframes wr-wave {
+  to {
+    transform: scaleY(1);
+  }
+}
 @keyframes wr-sheet-up {
   from {
     transform: translateY(100%);
@@ -364,4 +393,40 @@
   paint-order: stroke;
   stroke: #fbf6ec;
   stroke-width: 3px;
+}
+
+/* S7 audit: sheets and cards size with their padding and borders (they used to overflow phones by
+   about 40 px), and every control has at least a 44 pt tap area (invisible padding where the
+   drawn control stays compact). */
+.wr-sheet-card,
+.wr-sheet-card *,
+.wr-sheet-card *::before,
+.wr-sheet-card *::after,
+.wr-popup-card,
+.wr-popup-card * {
+  box-sizing: border-box;
+}
+.wr-sheet-card {
+  max-width: 100vw;
+}
+.wr-btn-sm,
+.wr-tab {
+  min-height: 40px;
+  position: relative;
+}
+.wr-btn-sm::before,
+.wr-tab::before,
+.wr-toggle::before,
+.wr-x::before {
+  content: '';
+  position: absolute;
+  inset: -4px -2px;
+}
+.wr-toggle::before {
+  inset: -9px -4px;
+}
+.wr-x {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
 }

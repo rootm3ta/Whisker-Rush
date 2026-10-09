@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type { Slot } from '../data/accessories';
 import { CATS, type CatId } from '../data/cats';
 import { dressCat } from '../procgen/accessories';
+import { POWERUP_IDS } from '../data/powerups';
 import { buildCat, buildShadow, type CatRig } from '../procgen/cat';
 
 const TAU = Math.PI * 2;
@@ -33,6 +34,8 @@ export interface CatDrive {
   loaf: boolean;
   /** Visual lift (riding the Roomba). */
   lift: number;
+  /** Home idle: groom (lick paw, wipe face). */
+  groom?: boolean;
 }
 
 function damp(cur: number, target: number, rate: number, dt: number): number {
@@ -66,6 +69,13 @@ export class Cat {
   private readonly tailPitchV: Float32Array;
   private readonly tailYaw: Float32Array;
   private readonly tailYawV: Float32Array;
+  private pupil: number = A.pupil.day;
+  private pupilTarget: number = A.pupil.day;
+  private daylight = true;
+  private catnip = false;
+  private kickT = 0;
+  private kickDir = 1;
+  private groomT = 0;
 
   constructor(bus: EventBus<GameEvents>) {
     this.rig = buildCat(CATS.miso);
@@ -78,8 +88,23 @@ export class Cat {
     bus.on('jump', () => (this.squashV += A.jumpStretch));
     bus.on('land', (impact) => (this.squashV -= impact * A.landSquashPerVy));
     bus.on('laneChange', () => (this.squashV += A.laneSquash));
-    bus.on('wallKick', () => (this.squashV += A.jumpStretch * 1.2));
+    bus.on('wallKick', (n) => {
+      this.squashV += A.jumpStretch * 1.2;
+      this.kickT = A.kickRollSec;
+      this.kickDir = n % 2 ? 1 : -1;
+    });
+    bus.on('powerStart', (i) => {
+      if (POWERUP_IDS[i] === 'catnip') this.catnip = true;
+    });
+    bus.on('powerEnd', (i) => {
+      if (POWERUP_IDS[i] === 'catnip') this.catnip = false;
+    });
     bus.on('stumble', () => (this.squashV -= A.jumpStretch));
+  }
+
+  /** Bright light narrows the pupils to slits; dusk and night open them up. */
+  setDaylight(on: boolean): void {
+    this.daylight = on;
   }
 
   /** Swaps the skin (rebuilds the rig) and dresses the outfit. */
@@ -114,10 +139,18 @@ export class Cat {
     const airB = A.airBack * this.air;
     const slF = A.slideFront * this.slide;
     const slB = A.slideBack * this.slide;
-    r.legs[0].rotation.x = sw * Math.sin(p) + airF + slF;
-    r.legs[1].rotation.x = sw * Math.sin(p + 0.35) + airF + slF;
-    r.legs[2].rotation.x = sw * Math.sin(p + Math.PI) + airB + slB;
-    r.legs[3].rotation.x = sw * Math.sin(p + Math.PI + 0.35) + airB + slB;
+    // Rotary gallop: each leg has its own phase; elbows and hocks fold on the forward swing.
+    const G = A.gallopPhase;
+    for (let i = 0; i < 4; i++) {
+      const front = i < 2;
+      const lp = p + G[i];
+      r.legs[i].rotation.x = sw * Math.sin(lp) + (front ? airF + slF : airB + slB);
+      const fold = Math.max(0, Math.cos(lp)) * A.kneeFold * gait;
+      r.knees[i].rotation.x = front ? fold + A.airKneeFront * this.air - slF * 0.2 : -fold + A.airKneeBack * this.air;
+      r.legs[i].scale.setScalar(1);
+      r.legs[i].rotation.z = 0;
+    }
+    r.head.rotation.y = 0;
     // Grind: balance pose, paws gathered under the body, slight side-to-side wobble.
     const gr = this.grind;
     for (let i = 0; i < 4; i++) r.legs[i].rotation.x += (i < 2 ? A.grindFront : A.grindBack) * gr;
@@ -141,7 +174,15 @@ export class Cat {
     r.body.position.y = r.bodyHeight + bob - A.slideDrop * this.slide;
     const pitch = A.pitchAmp * gait * Math.cos(p) + this.air * d.vy * A.airPitchPerVy;
     r.body.rotation.x = pitch;
-    r.head.rotation.x = -pitch * 0.7 + this.slide * 0.25;
+    // Spine flexes (gathered) and extends (stretched) once per stride; the air pose stretches out.
+    const flex = A.spineFlex * (gait * Math.cos(p) - this.air * 0.6 + this.slide * 0.4);
+    r.chest.rotation.x = flex;
+    r.hips.rotation.x = -flex;
+    r.neck.rotation.x = -flex * 0.5;
+    // Head stays level so the eyes stay on the road.
+    r.head.rotation.x = -(pitch + flex * 0.5) * A.headStabilize + this.slide * 0.25;
+    // Slide: ears pinned back.
+    r.ears[0].rotation.x = r.ears[1].rotation.x = 0.9 * this.slide;
 
     // Lean into lane changes.
     const vx = (d.x - this.lastX) / frameDt;
@@ -170,15 +211,46 @@ export class Cat {
       r.body.position.y = r.bodyHeight * 0.55;
       r.body.rotation.x = 0;
       r.head.rotation.x = d.nap ? 0.5 : 0;
-      for (let i = 0; i < 4; i++) r.legs[i].rotation.x = i < 2 ? -1.5 : 1.5;
+      r.chest.rotation.x = r.hips.rotation.x = 0;
+      for (let i = 0; i < 4; i++) {
+        r.legs[i].rotation.x = i < 2 ? -1.5 : 1.5;
+        r.knees[i].rotation.x = 0;
+      }
     }
-    for (let i = 0; i < 4; i++) r.legs[i].visible = !d.loaf;
+    // Loaf: paws tucked out of sight (collapsed into the body).
+    if (d.loaf) for (let i = 0; i < 4; i++) r.legs[i].scale.setScalar(0.05);
+    this.updateGroom(frameDt, !!d.groom && !d.running);
+    // Wall-kick: a quick barrel roll off the wall.
+    if (this.kickT > 0) {
+      this.kickT = Math.max(0, this.kickT - frameDt);
+      r.root.rotation.z += this.kickDir * TAU * THREE.MathUtils.smootherstep(1 - this.kickT / A.kickRollSec, 0, 1);
+    }
     r.torso.visible = r.head.visible = r.tail[0].visible = !d.boxed;
     r.root.position.y = d.y + d.lift;
 
     const show = !d.hidden && !(d.flicker && Math.floor(this.time * 12) % 2 === 0);
     r.root.visible = show;
     this.shadow.visible = !d.hidden;
+  }
+
+  /** Home grooming: sit back, lift a front paw, lick it, wipe the face. */
+  private updateGroom(dt: number, on: boolean): void {
+    if (!on) {
+      this.groomT = 0;
+      return;
+    }
+    this.groomT += dt;
+    const k = this.groomT % A.groomSec;
+    const w = Math.min(1, k * 4, (A.groomSec - k) * 4);
+    const r = this.rig;
+    const lick = Math.sin(k * 14) * 0.12;
+    const wipe = k > A.groomSec * 0.55 ? Math.sin((k - A.groomSec * 0.55) * 7) * 0.25 : 0;
+    r.legs[0].rotation.x += (-1.9 + lick) * w;
+    r.knees[0].rotation.x += 1.9 * w;
+    r.legs[0].rotation.z = 0.25 * w;
+    r.head.rotation.x += (0.45 + lick * 0.6) * w;
+    r.head.rotation.y += (-0.35 + wipe) * w;
+    r.chest.rotation.x += -0.25 * w;
   }
 
   /** Squash-pop when Miso bursts out of the dust cloud or revives. */
@@ -230,7 +302,12 @@ export class Cat {
       this.earT -= dt;
       flick = Math.sin((1 - Math.max(this.earT, 0) / A.earFlickSec) * Math.PI) * A.earFlickAngle;
     }
-    r.ears[0].rotation.x = this.earSide === 0 ? -flick : 0;
-    r.ears[1].rotation.x = this.earSide === 1 ? -flick : 0;
+    r.ears[0].rotation.x += this.earSide === 0 ? -flick : 0;
+    r.ears[1].rotation.x += this.earSide === 1 ? -flick : 0;
+
+    // Pupils: slits in daylight, round at dusk, huge on Catnip.
+    this.pupilTarget = this.catnip ? A.pupil.catnip : this.daylight ? A.pupil.day : A.pupil.dim;
+    this.pupil += (this.pupilTarget - this.pupil) * Math.min(1, dt * A.pupil.rate);
+    r.pupils[0].scale.x = r.pupils[1].scale.x = this.pupil;
   }
 }

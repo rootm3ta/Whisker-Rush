@@ -16,6 +16,10 @@ export class Dog {
   private taunt = 0;
   private face = 0;
 
+  get style(): DogDef['style'] {
+    return this.def.style;
+  }
+
   constructor(private readonly def: DogDef) {
     this.rig = buildDog(def);
   }
@@ -33,16 +37,30 @@ export class Dog {
     this.phase = (this.phase + this.def.gallopHz * Math.max(0.6, speedRatio) * this.run * dt * TAU) % TAU;
     const p = this.phase;
     const sw = A.legSwing * this.run;
-    r.legs[0].rotation.x = sw * Math.sin(p);
-    r.legs[1].rotation.x = sw * Math.sin(p + 0.4);
-    r.legs[2].rotation.x = sw * Math.sin(p + Math.PI);
-    r.legs[3].rotation.x = sw * Math.sin(p + Math.PI + 0.4);
-    r.body.position.y = r.bodyHeight + A.bobAmp * this.run * Math.abs(Math.sin(p));
+    const G = A.gallopPhase;
+    for (let i = 0; i < 4; i++) {
+      const lp = p + G[i];
+      r.legs[i].rotation.x = sw * Math.sin(lp);
+      const fold = Math.max(0, Math.cos(lp)) * A.kneeFold * this.run;
+      r.knees[i].rotation.x = i < 2 ? fold : -fold;
+    }
+    const spring = A.springy[this.def.build] ?? 1;
+    r.body.position.y = r.bodyHeight + A.bobAmp * spring * this.run * Math.abs(Math.sin(p));
     r.body.rotation.x = 0.06 * this.run * Math.cos(p);
+    const flex = A.spineFlex * this.run * Math.cos(p);
+    r.chest.rotation.x = flex;
+    r.hips.rotation.x = -flex;
     const flop = A.earFlop * (this.run * Math.sin(p + 1) + (1 - this.run) * 0.3 * Math.sin(this.time * A.idleHz * TAU));
-    r.ears[0].rotation.y = flop;
-    r.ears[1].rotation.y = -flop;
-    r.tail.rotation.y = A.tailWag * Math.sin(this.time * A.tailWagHz * TAU);
+    if (this.def.ears === 'long') {
+      // Long ears flap out to the sides.
+      r.ears[0].rotation.z = -Math.abs(flop) * 1.6;
+      r.ears[1].rotation.z = Math.abs(flop) * 1.6;
+    } else {
+      r.ears[0].rotation.x = r.ears[1].rotation.x = flop * (this.def.ears === 'pointy' ? 0.25 : 0.8);
+    }
+    for (let i = 0; i < r.jowls.length; i++) r.jowls[i].rotation.x = A.jowlBounce * this.run * Math.sin(p * 2 + 0.6);
+    const wag = A.tailWag * Math.sin(this.time * A.tailWagHz * TAU);
+    for (let i = 0; i < r.tails.length; i++) r.tails[i].rotation.y = wag * (0.6 + i * 0.3) * Math.cos(i * 0.5);
 
     let shake = 0;
     if (this.taunt > 0) {

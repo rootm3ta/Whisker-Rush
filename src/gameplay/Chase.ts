@@ -30,6 +30,8 @@ export class Chase {
   private passT = 0;
   private rushHit = false;
   private nextRushAt: number = PACK_RUSH.firstAtSec;
+  /** Street Pals barking at Duke: seconds the pack stays back and no rush starts. */
+  palLeft = 0;
   private rushDuration: number = PACK_RUSH.durationSec;
   private tauntCd = 0;
 
@@ -57,6 +59,13 @@ export class Chase {
     this.nextRushAt = PACK_RUSH.firstAtSec;
     this.rushDuration = PACK_RUSH.durationSec;
     this.tauntCd = 0;
+    this.palLeft = 0;
+  }
+
+  /** Tbilisi's Street Pals: friendly dogs bark at Duke and hold the pack back for `sec`. */
+  palDelay(sec: number): void {
+    this.palLeft = Math.max(this.palLeft, sec);
+    this.loseTrail();
   }
 
   /** After a revive: pack drops back, any rush is cancelled and rescheduled. */
@@ -109,7 +118,14 @@ export class Chase {
   }
 
   step(dt: number, r: Runner): void {
-    const target = this.closeLeft > 0 ? CHASE.closeGap : CHASE.farGap;
+    if (this.palLeft > 0) {
+      this.palLeft -= dt;
+      this.closeLeft = 0;
+      this.lunge = 0;
+      // Rushes wait until the pals are done.
+      if (this.rushPhase === RushPhase.Idle) this.nextRushAt = Math.max(this.nextRushAt, r.time + 1);
+    }
+    const target = this.palLeft > 0 ? CHASE.farGap * 1.6 : this.closeLeft > 0 ? CHASE.closeGap : CHASE.farGap;
     this.gap = damp(this.gap, target, CHASE.gapRate, dt);
     if (this.closeLeft > 0) this.closeLeft -= dt;
     if (this.lunge > 0) this.lunge -= dt;

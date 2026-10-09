@@ -1,7 +1,7 @@
 /** Playable cats (GAME_DESIGN 6.4). Coats are generated procedurally. */
 export type CatId = 'miso' | 'biscuit' | 'noir' | 'sushi' | 'mittens' | 'pixel';
 
-export type CoatPattern = 'calico' | 'tabby' | 'solid' | 'points' | 'fluffy' | 'sphynx';
+export type CoatPattern = 'calico' | 'tabby' | 'solid' | 'points' | 'fluffy' | 'sphynx' | 'tuxedo';
 
 export interface CatSkin {
   name: string;
@@ -22,7 +22,19 @@ export interface CatSkin {
   scale: number;
   unlock: { coins?: number; fishBones?: number; set?: string; pass?: number; default?: true };
   passive: string;
+  /** Shape tweaks on the shared body: cheek size, slimness, roundness, coat fluff (1 = base). */
+  morph?: CatMorph;
 }
+
+export interface CatMorph {
+  cheeks?: number;
+  slim?: number;
+  round?: number;
+  fluff?: number;
+}
+
+/** A tiny, round kitten preset for future kitten skins. */
+export const KITTEN_MORPH: CatMorph = { round: 1.18, cheeks: 1.15, slim: 1.05 };
 
 export const CATS: Record<CatId, CatSkin> = {
   miso: {
@@ -39,11 +51,11 @@ export const CATS: Record<CatId, CatSkin> = {
   },
   sushi: {
     name: 'Sushi', pattern: 'points', base: 0xf3e6cf, mark: 0x5a4436, mark2: 0x5a4436, legs: 0x6b5242, tail: 0x5a4436, tailTip: 0x3a2a22,
-    innerEar: 0xc9a0a0, eye: 0x4a8fe0, scale: 1.6, unlock: { fishBones: 15 }, passive: 'Longer Nap Time',
+    innerEar: 0xc9a0a0, eye: 0x4a8fe0, scale: 1.6, unlock: { fishBones: 15 }, passive: 'Longer Nap Time', morph: { slim: 0.86 },
   },
   mittens: {
     name: 'Professor Mittens', pattern: 'fluffy', base: 0xa7a9ae, mark: 0x8a8c92, mark2: 0xd8d9dc, legs: 0xd8d9dc, tail: 0xa7a9ae, tailTip: 0xd8d9dc,
-    innerEar: 0xe0b0b0, eye: 0x2a2320, extra: 'glasses', scale: 1.7, unlock: { set: 'fancyThings' }, passive: '+15% loot sell price',
+    innerEar: 0xe0b0b0, eye: 0x2a2320, extra: 'glasses', scale: 1.7, unlock: { set: 'fancyThings' }, passive: '+15% loot sell price', morph: { cheeks: 1.4, fluff: 1.08 },
   },
   pixel: {
     name: 'Pixel', pattern: 'sphynx', base: 0xf0c4b4, mark: 0xe0a898, mark2: 0xe0a898, legs: 0xf0c4b4, tail: 0xf0c4b4, tailTip: 0xe0a898,

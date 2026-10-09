@@ -10,7 +10,8 @@
   color: #2a201c;
 }
 .wr-go-card {
-  width: min(88vw, 360px);
+  box-sizing: border-box;
+  width: min(92vw, 360px);
   max-height: 92vh;
   overflow: auto;
   background: #fbf6ec;

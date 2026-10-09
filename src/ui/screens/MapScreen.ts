@@ -1,3 +1,5 @@
+import { ACCESSORIES } from '../../data/accessories';
+import { SETS } from '../../data/economy';
 import { CITIES, WORLD_TOUR, type CityId } from '../../data/cities';
 import { DOGS } from '../../data/dogs';
 import { LOOT_ITEMS, RARITIES } from '../../data/pickups';
@@ -81,6 +83,14 @@ export class MapScreen {
         <span class="wr-swatch" style="background:linear-gradient(135deg, ${hex(c.palette.skyTop)} 50%, ${hex(c.palette.skyHorizon)} 50%)"></span></div>
       <p class="wr-note">Local dogs: ${esc(dogs)} · Hazards: ${esc(c.map.hazard)} · Shortcut: ${esc(c.map.shortcut)} · Music: ${esc(c.map.musicName)}</p>
       <p class="wr-note">Loot to find: ${loot}</p>`;
+    if (c.districts) html += `<p class="wr-note">Districts: ${c.districts.map((d) => esc(d.name)).join(' > ')}</p>`;
+    const extras: string[] = [];
+    if (c.outfitSet) extras.push(`Outfit set <b>${esc(c.outfitSet.name)}</b> (${c.outfitSet.pieces.map((a) => esc(ACCESSORIES[a].name)).join(', ')}): +${Math.round(c.outfitSet.bonus * 100)}% coins here`);
+    const set = SETS.find((s) => 'city' in s && s.city === id);
+    if (set && 'cityBonus' in set) extras.push(`Collection <b>${esc(set.name)}</b>: +${Math.round(set.cityBonus * 100)}% coins here`);
+    for (const v of c.powerVariants ?? []) extras.push(`Local power-up: <b>${esc(v.name)}</b>`);
+    if (c.streetPals) extras.push('Friendly <b>Street Pals</b> sometimes hold Duke back');
+    if (extras.length) html += `<p class="wr-note">${extras.join(' · ')}</p>`;
     if (p.city === id) html += `<p class="wr-note"><b>You are here.</b> Your runs happen in ${esc(c.name)}.</p>`;
     else if (isUnlocked(p, id)) html += `<button class="wr-btn wr-btn-main" data-travel="${id}">Travel to ${esc(c.name)}</button>`;
     else {
